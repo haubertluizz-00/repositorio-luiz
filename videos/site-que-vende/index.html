@@ -1,0 +1,890 @@
+<!doctype html>
+<html
+  lang="pt-BR"
+  data-resolution="portrait"
+  data-composition-variables='[
+    {"id":"marca","type":"string","label":"Nome da marca","default":"SUA MARCA"},
+    {"id":"whatsapp","type":"string","label":"WhatsApp","default":"(00) 00000-0000"},
+    {"id":"site","type":"string","label":"Endereço do site (sem www.)","default":"suamarca.com.br"},
+    {"id":"busca","type":"string","label":"Busca do cliente na cena 1","default":"dentista perto de mim"},
+    {"id":"accent","type":"color","label":"Cor de destaque","default":"#FF5A1F"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #14110f;
+      }
+      #root {
+        --bg: #14110f;
+        --fg: #f4eee6;
+        --muted: #a39a90;
+        --card: #1e1a17;
+        --line: #3a332d;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: "IBM Plex Mono", monospace;
+      }
+      .accent {
+        color: var(--accent, #ff5a1f);
+      }
+
+      /* ---------- fundo persistente ---------- */
+      .bg {
+        position: absolute;
+        pointer-events: none;
+      }
+      #bg-grid {
+        left: 0;
+        right: 0;
+        top: -200px;
+        bottom: -200px;
+        background-image:
+          linear-gradient(rgba(244, 238, 230, 0.1) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(244, 238, 230, 0.1) 2px, transparent 2px);
+        background-size: 90px 90px;
+      }
+      #bg-glow {
+        width: 1500px;
+        height: 1500px;
+        left: -60px;
+        top: -720px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          color-mix(in srgb, var(--accent, #ff5a1f) 34%, transparent) 0%,
+          transparent 62%
+        );
+      }
+      #bg-glow-2 {
+        width: 1100px;
+        height: 1100px;
+        left: -520px;
+        top: 1250px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          color-mix(in srgb, var(--accent, #ff5a1f) 18%, transparent) 0%,
+          transparent 60%
+        );
+      }
+      #bg-ghost {
+        left: 60px;
+        top: 1500px;
+        font-family: "Archivo Black", sans-serif;
+        font-size: 340px;
+        line-height: 1;
+        white-space: nowrap;
+        color: transparent;
+        -webkit-text-stroke: 3px rgba(244, 238, 230, 0.16);
+      }
+
+      /* ---------- barra de progresso (estilo stories) ---------- */
+      #progress {
+        position: absolute;
+        top: 196px;
+        left: 90px;
+        right: 90px;
+        display: flex;
+        gap: 12px;
+        z-index: 20;
+      }
+      #progress .seg {
+        flex: 1;
+        height: 8px;
+        border-radius: 4px;
+        background: rgba(244, 238, 230, 0.18);
+        overflow: hidden;
+      }
+      #progress .fill {
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: var(--accent, #ff5a1f);
+        transform-origin: left center;
+      }
+
+      /* ---------- cenas ---------- */
+      .scene {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      #s2,
+      #s3,
+      #s4,
+      #s5 {
+        opacity: 0;
+      }
+      .inner {
+        position: absolute;
+        inset: 0;
+        padding: 290px 90px 440px;
+        display: flex;
+        flex-direction: column;
+      }
+      .label {
+        font-size: 32px;
+        color: var(--muted);
+      }
+      .display {
+        font-family: "Archivo Black", sans-serif;
+        font-weight: 400;
+        letter-spacing: -0.02em;
+        color: var(--fg);
+      }
+      .ln {
+        display: block;
+      }
+
+      /* cena 1: a busca */
+      .search {
+        margin-top: 28px;
+        height: 128px;
+        border: 4px solid var(--fg);
+        border-radius: 64px;
+        background: #1b1714;
+        display: flex;
+        align-items: center;
+        gap: 26px;
+        padding: 0 44px;
+      }
+      .search svg {
+        flex: none;
+        width: 50px;
+        height: 50px;
+      }
+      .typed {
+        font-size: 44px;
+        white-space: nowrap;
+      }
+      .caret {
+        display: inline-block;
+        width: 4px;
+        height: 54px;
+        margin-left: 6px;
+        vertical-align: middle;
+        background: var(--accent, #ff5a1f);
+      }
+      .results {
+        margin-top: 34px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .result {
+        border: 3px solid var(--line);
+        background: var(--card);
+        border-radius: 22px;
+        padding: 24px 34px;
+      }
+      .result .t {
+        font-weight: 700;
+        font-size: 38px;
+      }
+      .result .u {
+        margin-top: 6px;
+        font-size: 28px;
+        color: var(--muted);
+      }
+      .result.missing {
+        border: 3px dashed var(--accent, #ff5a1f);
+        background: transparent;
+      }
+      .result.missing .u {
+        color: var(--accent, #ff5a1f);
+        font-weight: 700;
+      }
+      #s1 .headline {
+        margin-top: auto;
+        font-size: 94px;
+        line-height: 1.02;
+      }
+
+      /* cena 2: terreno alugado */
+      #s2 .inner {
+        justify-content: center;
+      }
+      #s2 .big {
+        font-size: 132px;
+        line-height: 0.98;
+      }
+      #s2 .sub {
+        margin-top: 44px;
+        font-size: 42px;
+        line-height: 1.35;
+        max-width: 860px;
+      }
+      .chips {
+        margin-top: 56px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 22px;
+      }
+      .chip {
+        position: relative;
+        font-size: 38px;
+        padding: 16px 30px;
+        border: 3px solid var(--line);
+        border-radius: 999px;
+        background: var(--card);
+      }
+      .strike {
+        position: absolute;
+        background: var(--accent, #ff5a1f);
+        transform-origin: left center;
+      }
+      .chip .strike {
+        left: 20px;
+        right: 20px;
+        top: 50%;
+        height: 5px;
+        margin-top: -2px;
+      }
+
+      /* cena 3: os motivos */
+      #s3 .label {
+        color: var(--accent, #ff5a1f);
+        font-weight: 700;
+      }
+      #s3 .title {
+        margin-top: 14px;
+        font-size: 96px;
+        line-height: 1;
+      }
+      .rows {
+        margin-top: 60px;
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+      }
+      .row {
+        display: flex;
+        align-items: flex-start;
+        gap: 28px;
+      }
+      .num {
+        flex: none;
+        width: 96px;
+        height: 96px;
+        border-radius: 20px;
+        border: 3px solid var(--accent, #ff5a1f);
+        color: var(--accent, #ff5a1f);
+        font-weight: 700;
+        font-size: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .row .rt {
+        font-family: "Archivo Black", sans-serif;
+        font-size: 60px;
+        line-height: 1.04;
+        letter-spacing: -0.02em;
+      }
+      .row .rs {
+        margin-top: 8px;
+        font-size: 32px;
+        color: var(--muted);
+      }
+
+      /* cena 4: reenquadramento */
+      #s4 .inner {
+        justify-content: center;
+      }
+      #s4 .l1 {
+        position: relative;
+        align-self: flex-start;
+        font-size: 104px;
+        line-height: 1.1;
+        color: var(--muted);
+      }
+      #s4 .l1 .strike {
+        left: -12px;
+        right: -12px;
+        top: 50%;
+        height: 12px;
+        margin-top: -4px;
+      }
+      #s4 .l2 {
+        margin-top: 64px;
+        font-size: 96px;
+        line-height: 1.04;
+        max-width: 900px;
+      }
+
+      /* cena 5: CTA */
+      .window {
+        position: absolute;
+        left: 90px;
+        right: 90px;
+        top: 290px;
+        height: 620px;
+        border-radius: 28px;
+        border: 4px solid var(--fg);
+        background: #1b1714;
+        overflow: hidden;
+      }
+      .wbar {
+        height: 76px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 26px;
+        border-bottom: 3px solid var(--line);
+      }
+      .dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--line);
+      }
+      .dot.on {
+        background: var(--accent, #ff5a1f);
+      }
+      .addr {
+        margin-left: 14px;
+        flex: 1;
+        height: 46px;
+        border-radius: 23px;
+        background: var(--card);
+        display: flex;
+        align-items: center;
+        padding: 0 22px;
+        font-size: 26px;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .addr .caret {
+        height: 30px;
+        width: 3px;
+      }
+      .wbody {
+        padding: 40px 44px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+      .wnav {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+      .logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--accent, #ff5a1f);
+      }
+      .skel {
+        display: block;
+        height: 18px;
+        border-radius: 9px;
+        background: var(--line);
+      }
+      .wnav .skel {
+        width: 90px;
+      }
+      .wnav .skel:first-of-type {
+        margin-left: auto;
+      }
+      .wbrand {
+        font-size: 72px;
+        line-height: 1;
+      }
+      .wrow {
+        margin-top: 8px;
+        display: flex;
+        gap: 22px;
+        align-items: stretch;
+      }
+      .wimg {
+        flex: 1;
+        height: 180px;
+        border-radius: 18px;
+        border: 3px solid var(--accent, #ff5a1f);
+        background: repeating-linear-gradient(
+          135deg,
+          color-mix(in srgb, var(--accent, #ff5a1f) 26%, transparent) 0 18px,
+          transparent 18px 36px
+        );
+      }
+      .wside {
+        width: 300px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .wbtn {
+        height: 64px;
+        border-radius: 32px;
+        background: var(--accent, #ff5a1f);
+        color: var(--bg);
+        font-weight: 700;
+        font-size: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #s5 .headline {
+        position: absolute;
+        left: 90px;
+        right: 90px;
+        top: 975px;
+        font-size: 100px;
+        line-height: 1.02;
+      }
+      .cta {
+        position: absolute;
+        left: 90px;
+        top: 1230px;
+        width: 900px;
+        height: 140px;
+        border-radius: 70px;
+        background: var(--accent, #ff5a1f);
+        color: var(--bg);
+        font-weight: 700;
+        font-size: 44px;
+        letter-spacing: 0.02em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .footer {
+        position: absolute;
+        left: 90px;
+        right: 90px;
+        top: 1404px;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 24px;
+      }
+      .footer .brand {
+        font-size: 44px;
+      }
+      .footer .zap {
+        font-size: 32px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .ripple {
+        position: absolute;
+        left: 500px;
+        top: 1240px;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 4px solid var(--fg);
+        opacity: 0;
+      }
+      #cursor {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 64px;
+        height: 64px;
+        z-index: 30;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="26"
+      data-width="1080"
+      data-height="1920"
+    >
+      <!-- fundo persistente -->
+      <div id="bg-grid" class="bg"></div>
+      <div id="bg-glow" class="bg"></div>
+      <div id="bg-glow-2" class="bg"></div>
+      <div id="bg-ghost" class="bg" data-layout-ignore aria-hidden="true">www.</div>
+
+      <div id="progress">
+        <div class="seg"><i class="fill" id="pf1"></i></div>
+        <div class="seg"><i class="fill" id="pf2"></i></div>
+        <div class="seg"><i class="fill" id="pf3"></i></div>
+        <div class="seg"><i class="fill" id="pf4"></i></div>
+        <div class="seg"><i class="fill" id="pf5"></i></div>
+      </div>
+
+      <!-- CENA 1: a busca -->
+      <div id="s1" class="scene">
+        <div class="inner">
+          <div class="label" id="s1-label">// agora mesmo, alguém está buscando:</div>
+          <div class="search" id="s1-search">
+            <svg viewBox="0 0 50 50" fill="none" stroke="#F4EEE6" stroke-width="5" stroke-linecap="round">
+              <circle cx="21" cy="21" r="14" />
+              <line x1="31.5" y1="31.5" x2="44" y2="44" />
+            </svg>
+            <div class="typed"><span id="q-text"></span><span class="caret" id="q-caret"></span></div>
+          </div>
+          <div class="results">
+            <div class="result" id="r-a">
+              <div class="t">Concorrente A</div>
+              <div class="u">site · agenda online · avaliações</div>
+            </div>
+            <div class="result" id="r-b">
+              <div class="t">Concorrente B</div>
+              <div class="u">site · fotos · WhatsApp</div>
+            </div>
+            <div class="result missing" id="r-miss">
+              <div class="t">Sua empresa</div>
+              <div class="u">não encontrada</div>
+            </div>
+          </div>
+          <div class="headline display">
+            <span class="ln" id="s1-h1">Seu cliente te procurou.</span>
+            <span class="ln" id="s1-h2">E achou o <span class="accent">concorrente.</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENA 2: terreno alugado -->
+      <div id="s2" class="scene">
+        <div class="inner">
+          <div class="big display">
+            <span class="ln" id="s2-h1">Só no</span>
+            <span class="ln accent" id="s2-h2">Instagram?</span>
+          </div>
+          <div class="sub" id="s2-sub">Seu negócio está num terreno alugado.</div>
+          <div class="chips">
+            <div class="chip" id="c1">o algoritmo muda<i class="strike" id="k1"></i></div>
+            <div class="chip" id="c2">o alcance cai<i class="strike" id="k2"></i></div>
+            <div class="chip" id="c3">a conta pode sumir<i class="strike" id="k3"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENA 3: cinco motivos -->
+      <div id="s3" class="scene">
+        <div class="inner">
+          <div class="label" id="s3-label">// 5 motivos</div>
+          <div class="title display">
+            <span class="ln" id="s3-t1">Por que ter</span>
+            <span class="ln" id="s3-t2">um <span class="accent">site?</span></span>
+          </div>
+          <div class="rows">
+            <div class="row" id="row1">
+              <div class="num">01</div>
+              <div>
+                <div class="rt">Aparece no Google</div>
+                <div class="rs">quem busca já quer comprar</div>
+              </div>
+            </div>
+            <div class="row" id="row2">
+              <div class="num">02</div>
+              <div>
+                <div class="rt">Passa confiança</div>
+                <div class="rs">site próprio = empresa séria</div>
+              </div>
+            </div>
+            <div class="row" id="row3">
+              <div class="num">03</div>
+              <div>
+                <div class="rt">Vende 24 horas</div>
+                <div class="rs">trabalha enquanto você dorme</div>
+              </div>
+            </div>
+            <div class="row" id="row4">
+              <div class="num">04</div>
+              <div>
+                <div class="rt">É dono do canal</div>
+                <div class="rs">sem depender de algoritmo</div>
+              </div>
+            </div>
+            <div class="row" id="row5">
+              <div class="num">05</div>
+              <div>
+                <div class="rt">Leva pro WhatsApp</div>
+                <div class="rs">o cliente chega pronto pra fechar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENA 4: reenquadramento -->
+      <div id="s4" class="scene">
+        <div class="inner">
+          <div class="l1 display" id="s4-l1">Não é gasto.<i class="strike" id="s4-strike"></i></div>
+          <div class="l2 display" id="s4-l2">
+            É um vendedor que <span class="accent">nunca tira férias.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENA 5: CTA -->
+      <div id="s5" class="scene">
+        <div class="window" id="win">
+          <div class="wbar">
+            <i class="dot on"></i><i class="dot"></i><i class="dot"></i>
+            <div class="addr"><span id="u-text"></span><span class="caret" id="u-caret"></span></div>
+          </div>
+          <div class="wbody">
+            <div class="wnav w-in"><i class="logo"></i><i class="skel"></i><i class="skel"></i><i class="skel"></i></div>
+            <div class="wbrand display w-in" data-var-text="marca">SUA MARCA</div>
+            <i class="skel w-in" style="width: 88%"></i>
+            <i class="skel w-in" style="width: 62%"></i>
+            <div class="wrow w-in">
+              <div class="wimg"></div>
+              <div class="wside">
+                <i class="skel" style="width: 100%"></i>
+                <i class="skel" style="width: 76%"></i>
+                <div class="wbtn">Agendar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="headline display">
+          <span class="ln" id="s5-h1">Vamos criar</span>
+          <span class="ln accent" id="s5-h2">o seu?</span>
+        </div>
+        <div class="cta" id="cta">QUERO MEU SITE →</div>
+        <div class="footer" id="foot">
+          <div class="brand display" data-var-text="marca">SUA MARCA</div>
+          <div class="zap">WhatsApp <span data-var-text="whatsapp">(00) 00000-0000</span></div>
+        </div>
+        <div class="ripple" id="rp1"></div>
+        <div class="ripple" id="rp2"></div>
+        <div class="ripple" id="rp3"></div>
+        <svg id="cursor" viewBox="0 0 64 64">
+          <path
+            d="M4 2 L4 50 L17 38 L26 58 L34 54 L25 35 L42 35 Z"
+            fill="#F4EEE6"
+            stroke="#14110F"
+            stroke-width="3"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+    </div>
+
+    <script>
+      const DUR = 26;
+      const tl = gsap.timeline({ paused: true });
+
+      // Variáveis (marca, whatsapp e cor entram por data-var-text / --accent).
+      const vars =
+        window.__hyperframes && window.__hyperframes.getVariables ? window.__hyperframes.getVariables() : {};
+      const BUSCA = vars.busca || "dentista perto de mim";
+      const SITE = "www." + (vars.site || "suamarca.com.br");
+      const ACCENT = vars.accent || "#FF5A1F";
+
+      // Limites de cada cena e das transições.
+      const S = [0, 4.6, 8.4, 18.6, 21.4, DUR];
+
+      // ---------- digitação determinística (discrete-text-sequence) ----------
+      function schedule(text, t0, step) {
+        const out = [{ t: 0, text: "" }];
+        let t = t0;
+        for (let i = 1; i <= text.length; i++) {
+          t += step * (0.7 + ((i * 37) % 11) / 18) + (text[i - 1] === " " ? step * 0.9 : 0);
+          out.push({ t, text: text.slice(0, i) });
+        }
+        return out;
+      }
+      function textAt(seq, time) {
+        for (let i = seq.length - 1; i >= 0; i--) if (time >= seq[i].t) return seq[i].text;
+        return "";
+      }
+      function caretAt(time, typedEnd) {
+        if (time < typedEnd) return 1;
+        return Math.floor((time - typedEnd) / 0.45) % 2 === 0 ? 1 : 0;
+      }
+      const qSeq = schedule(BUSCA, 0.55, 0.055);
+      const uSeq = schedule(SITE, 22.05, 0.04);
+      const qEnd = qSeq[qSeq.length - 1].t;
+      const uEnd = uSeq[uSeq.length - 1].t;
+      const qText = document.getElementById("q-text");
+      const qCaret = document.getElementById("q-caret");
+      const uText = document.getElementById("u-text");
+      const uCaret = document.getElementById("u-caret");
+      const driver = { t: 0 };
+      function renderTyping() {
+        const t = driver.t;
+        qText.textContent = textAt(qSeq, t);
+        qCaret.style.opacity = caretAt(t, qEnd);
+        uText.textContent = textAt(uSeq, t);
+        uCaret.style.opacity = t < 21.9 ? 0 : caretAt(t, uEnd);
+      }
+      renderTyping();
+      tl.to(driver, { t: DUR, duration: DUR, ease: "none", onUpdate: renderTyping }, 0);
+
+      // ---------- fundo: movimento ambiente ----------
+      tl.fromTo("#bg-grid", { y: 0 }, { y: 180, duration: DUR, ease: "none" }, 0);
+      tl.fromTo("#bg-ghost", { x: 0 }, { x: -300, duration: DUR, ease: "none" }, 0);
+      tl.fromTo(
+        "#bg-glow",
+        { scale: 1 },
+        { scale: 1.12, duration: 2.6, ease: "sine.inOut", yoyo: true, repeat: Math.max(0, Math.floor(DUR / 2.6) - 1) },
+        0,
+      );
+      tl.fromTo(
+        "#bg-glow-2",
+        { scale: 1.1 },
+        { scale: 0.95, duration: 3.25, ease: "sine.inOut", yoyo: true, repeat: Math.max(0, Math.floor(DUR / 3.25) - 1) },
+        0,
+      );
+
+      // ---------- progresso ----------
+      for (let i = 0; i < 5; i++) {
+        tl.fromTo(
+          "#pf" + (i + 1),
+          { scaleX: 0 },
+          { scaleX: 1, duration: S[i + 1] - S[i], ease: "none" },
+          S[i],
+        );
+      }
+
+      // ---------- transições ----------
+      function push(from, to, T) {
+        tl.to(from, { y: -1920, duration: 0.5, ease: "power3.inOut" }, T);
+        tl.fromTo(to, { y: 1920, opacity: 1 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.inOut" }, T);
+      }
+      push("#s1", "#s2", S[1]);
+      push("#s2", "#s3", S[2]);
+      push("#s3", "#s4", S[3]);
+      // zoom through no fechamento
+      tl.to("#s4", { scale: 2.2, opacity: 0, filter: "blur(8px)", duration: 0.4, ease: "power3.in" }, S[4]);
+      tl.fromTo(
+        "#s5",
+        { scale: 0.6, opacity: 0, filter: "blur(8px)" },
+        { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.45, ease: "power3.out" },
+        S[4] + 0.15,
+      );
+
+      // ---------- CENA 1 ----------
+      tl.fromTo("#s1-label", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, 0);
+      tl.fromTo(
+        "#s1-search",
+        { opacity: 0, scale: 0.85 },
+        { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(1.6)" },
+        0.08,
+      );
+      tl.fromTo(
+        ["#r-a", "#r-b", "#r-miss"],
+        { opacity: 0, y: 70 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.14 },
+        2.05,
+      );
+      tl.to("#r-miss", { x: 14, duration: 0.06, ease: "sine.inOut", yoyo: true, repeat: 5 }, 2.75);
+      tl.fromTo(
+        "#s1-h1",
+        { opacity: 0, scale: 1.3, filter: "blur(14px)", transformOrigin: "0% 50%" },
+        { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "power4.out" },
+        3.0,
+      );
+      tl.fromTo("#s1-h2", { opacity: 0, x: -300 }, { opacity: 1, x: 0, duration: 0.45, ease: "expo.out" }, 3.55);
+
+      // ---------- CENA 2 ----------
+      tl.fromTo("#s2-h1", { opacity: 0, y: 80 }, { opacity: 1, y: 0, duration: 0.5, ease: "circ.out" }, 4.95);
+      tl.fromTo(
+        "#s2-h2",
+        { opacity: 0, scale: 1.4, filter: "blur(16px)", transformOrigin: "0% 50%" },
+        { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "power4.out" },
+        5.25,
+      );
+      tl.fromTo("#s2-sub", { opacity: 0, x: -220 }, { opacity: 1, x: 0, duration: 0.45, ease: "expo.out" }, 5.75);
+      tl.fromTo(
+        ["#c1", "#c2", "#c3"],
+        { opacity: 0, scale: 0, transformOrigin: "0% 50%" },
+        { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(2)", stagger: 0.15 },
+        6.2,
+      );
+      ["#k1", "#k2", "#k3"].forEach((k, i) => {
+        const at = 6.95 + i * 0.3;
+        tl.fromTo(k, { scaleX: 0 }, { scaleX: 1, duration: 0.3, ease: "power2.out" }, at);
+        tl.to("#c" + (i + 1), { color: "#A39A90", duration: 0.3, ease: "none" }, at);
+      });
+
+      // ---------- CENA 3 ----------
+      tl.fromTo("#s3-label", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, 8.75);
+      tl.fromTo("#s3-t1", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.45, ease: "circ.out" }, 8.85);
+      tl.fromTo(
+        "#s3-t2",
+        { opacity: 0, scale: 1.3, filter: "blur(12px)", transformOrigin: "0% 50%" },
+        { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "power4.out" },
+        9.05,
+      );
+      const BEATS = [9.6, 11.3, 13.0, 14.7, 16.4];
+      const ENTRY = [
+        [{ opacity: 0, scale: 1.25, filter: "blur(12px)", transformOrigin: "0% 50%" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "power4.out" }],
+        [{ opacity: 0, x: -280 }, { opacity: 1, x: 0, duration: 0.45, ease: "expo.out" }],
+        [{ opacity: 0, y: 80, rotation: 4, transformOrigin: "0% 50%" }, { opacity: 1, y: 0, rotation: 0, duration: 0.55, ease: "circ.out" }],
+        [{ opacity: 0, x: 280 }, { opacity: 1, x: 0, duration: 0.45, ease: "expo.out" }],
+        [{ opacity: 0, scale: 0.6, transformOrigin: "0% 50%" }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(2)" }],
+      ];
+      BEATS.forEach((at, i) => {
+        tl.fromTo("#row" + (i + 1), ENTRY[i][0], ENTRY[i][1], at);
+        if (i > 0) tl.to("#row" + i, { opacity: 0.4, duration: 0.3, ease: "power1.out" }, at);
+      });
+      // trava final: todos os motivos juntos
+      tl.to(["#row1", "#row2", "#row3", "#row4", "#row5"], { opacity: 1, duration: 0.35, ease: "power1.out", stagger: 0.05 }, 17.4);
+      tl.to("#s3 .num", { backgroundColor: ACCENT, color: "#14110F", duration: 0.3, ease: "power1.out", stagger: 0.07 }, 17.45);
+
+      // ---------- CENA 4 ----------
+      tl.fromTo("#s4-l1", { opacity: 0, y: 70 }, { opacity: 1, y: 0, duration: 0.5, ease: "circ.out" }, 18.95);
+      tl.fromTo("#s4-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "power2.inOut" }, 19.5);
+      tl.fromTo(
+        "#s4-l2",
+        { opacity: 0, x: -260, filter: "blur(10px)" },
+        { opacity: 1, x: 0, filter: "blur(0px)", duration: 0.5, ease: "expo.out" },
+        19.95,
+      );
+
+      // ---------- CENA 5 ----------
+      tl.fromTo("#win", { opacity: 0, y: 120 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 21.7);
+      tl.fromTo(".w-in", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, ease: "power2.out", stagger: 0.08 }, 22.0);
+      tl.fromTo("#s5-h1", { opacity: 0, y: 70 }, { opacity: 1, y: 0, duration: 0.45, ease: "circ.out" }, 22.7);
+      tl.fromTo(
+        "#s5-h2",
+        { opacity: 0, scale: 1.35, filter: "blur(12px)", transformOrigin: "0% 50%" },
+        { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "power4.out" },
+        22.95,
+      );
+      tl.fromTo("#cta", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, 23.25);
+      // cursor-click-ripple
+      tl.fromTo("#cursor", { x: 880, y: 1700, opacity: 0 }, { x: 880, y: 1700, opacity: 1, duration: 0.2, ease: "none" }, 23.55);
+      tl.to("#cursor", { x: 560, y: 1300, duration: 0.6, ease: "power3.inOut" }, 23.75);
+      tl.to("#cursor", { scale: 0.85, duration: 0.1, ease: "power2.in", yoyo: true, repeat: 1 }, 24.4);
+      tl.to("#cta", { scale: 0.95, duration: 0.1, ease: "power2.in", yoyo: true, repeat: 1 }, 24.4);
+      tl.fromTo(
+        ["#rp1", "#rp2", "#rp3"],
+        { scale: 0, opacity: 0.9 },
+        { scale: 3, opacity: 0, duration: 0.7, ease: "power2.out", stagger: 0.12, immediateRender: false },
+        24.45,
+      );
+      tl.to("#cursor", { opacity: 0, duration: 0.3, ease: "power1.out" }, 24.95);
+      tl.fromTo("#foot", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 24.6);
+      tl.fromTo(
+        "#cta",
+        { scale: 1 },
+        { scale: 1.035, duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: Math.max(0, Math.floor((DUR - 24.8) / 0.6) - 1), immediateRender: false },
+        24.8,
+      );
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
