@@ -33,3 +33,13 @@ VPS (24h)
 ## Pendências do usuário
 - Escolher o jogo (corrida de países / cabo de guerra / personagem que sobrevive / outro).
 - Confirmar: 18+ e conta TikTok com LIVE liberada? Tem chave de transmissão?
+
+## Referência analisada: @cobradoabismo (TikTok, 10/11/2026)
+- 91,9 mil seguidores, 412 mil curtidas, 232 vídeos, conta de 2018.
+- Bio: "Thiago Reyers | Machine Learning — Para criar sua própria cobrinha virtual" + link oboneco.com.br
+  -> ele VENDE a ferramenta/método para outros (mesmo modelo de negócio planejado aqui = concorrente direto).
+- Última live: "Live Cobra do Abismo", 16:20–17:23 UTC (~1h03), NÃO 24/7.
+  - Transmitida por programa externo (live_type_third_party = RTMP/LIVE Studio), categoria Gaming, 720x1280, 3,5 Mbps.
+  - 3.841 pessoas entraram, 27 novos seguidores.
+  - Presentes: a API pública retorna 0 (dado escondido) -> não dá para saber quanto ganha.
+  - Não marcou como conteúdo de IA (aigc_self_disclosure_switch = false).
