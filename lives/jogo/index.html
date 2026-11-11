@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guerra dos Países</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070f; overflow: hidden; font-family: system-ui, sans-serif; }
+  #palco { display: flex; height: 100%; align-items: center; justify-content: center; gap: 16px; }
+  #tela { height: 100vh; aspect-ratio: 9 / 16; display: block; }
+  #sim { display: none; width: 300px; max-height: 96vh; overflow: auto; background: #151b33; color: #fff;
+         border-radius: 12px; padding: 14px; box-sizing: border-box; font-size: 14px; }
+  body.sim #sim { display: block; }
+  body.sim #tela { height: 96vh; }
+  #sim h2 { margin: 0 0 8px; font-size: 16px; }
+  #sim label { display: block; margin: 8px 0 4px; color: #aab; }
+  #sim input, #sim select { width: 100%; padding: 8px; border-radius: 8px; border: 0; box-sizing: border-box; }
+  #sim .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+  #sim button { padding: 9px 6px; border: 0; border-radius: 8px; background: #2d3561; color: #fff; font-weight: 700; cursor: pointer; }
+  #sim button:hover { background: #3d4781; }
+  #sim button.ouro { background: #8a6d00; }
+  #sim .status { margin-top: 10px; color: #aab; font-size: 12px; }
+  @media (max-width: 760px) {
+    #palco { flex-direction: column; }
+    body.sim #tela { height: 60vh; }
+    #sim { width: 100%; max-height: 38vh; }
+  }
+</style>
+</head>
+<body>
+<div id="palco">
+  <canvas id="tela"></canvas>
+  <div id="sim">
+    <h2>Simulador da live</h2>
+    <label for="nome">Nome de quem interage</label>
+    <input id="nome" value="luiz">
+    <label for="texto">Comentário</label>
+    <input id="texto" value="brasil 🇧🇷">
+    <div class="botoes">
+      <button data-ev="comentario">💬 Comentar</button>
+      <button data-ev="like">❤️ Like x5</button>
+      <button data-ev="seguir">➕ Seguir</button>
+      <button data-ev="compartilhar">🔁 Compartilhar</button>
+      <button class="ouro" data-d="1">🎁 1 💎</button>
+      <button class="ouro" data-d="5">🎁 5 💎</button>
+      <button class="ouro" data-d="30">🎁 30 💎</button>
+      <button class="ouro" data-d="100">🎁 100 💎</button>
+      <button class="ouro" data-d="500">🎁 500 💎</button>
+      <button id="auto">▶ Auto-simular</button>
+    </div>
+    <div class="status" id="status">Ponte: desconectada (normal no modo teste)</div>
+  </div>
+</div>
+<script src="paises.js"></script>
+<script src="jogo.js"></script>
+<script>
+  // Simulador: abra com ?sim=1 para testar sem live.
+  (() => {
+    const q = new URLSearchParams(location.search);
+    if (q.has('sim')) document.body.classList.add('sim');
+    const $ = id => document.getElementById(id);
+    const base = () => ({ id: $('nome').value.trim() || 'teste', nome: $('nome').value.trim() || 'teste' });
+
+    document.querySelectorAll('#sim [data-ev]').forEach(b => b.onclick = () => {
+      const ev = { ...base(), tipo: b.dataset.ev };
+      if (ev.tipo === 'comentario') ev.texto = $('texto').value;
+      if (ev.tipo === 'like') ev.likes = 5;
+      jogo.evento(ev);
+    });
+    document.querySelectorAll('#sim [data-d]').forEach(b => b.onclick = () =>
+      jogo.evento({ ...base(), tipo: 'presente', presente: 'Presente', diamantes: +b.dataset.d, qtd: 1 }));
+
+    // Auto-simulação: público falso interagindo (bom para testar e para gravar vídeos).
+    const nomes = ['ana', 'joao', 'pedro', 'maria', 'lucas', 'bia', 'gabi', 'davi', 'leo', 'duda', 'rafa', 'nina',
+                   'theo', 'enzo', 'malu', 'caio', 'lara', 'vini', 'sofia', 'igor', 'juan', 'diego', 'yuki', 'tom'];
+    const falas = ['brasil', 'argentina', 'portugal 🇵🇹', 'mexico', 'eua', 'japao', 'bora!!', 'kkkkk', 'franca', '🇧🇷🇧🇷',
+                   'colombia', 'angola', 'vai brasil', 'italia', 'uruguai', 'chile'];
+    let timer = null;
+    function passo() {
+      const n = nomes[Math.floor(Math.random() * nomes.length)];
+      const ev = { id: n, nome: n };
+      const r = Math.random();
+      if (r < 0.45) jogo.evento({ ...ev, tipo: 'comentario', texto: falas[Math.floor(Math.random() * falas.length)] });
+      else if (r < 0.85) jogo.evento({ ...ev, tipo: 'like', likes: 1 + Math.floor(Math.random() * 8) });
+      else if (r < 0.9) jogo.evento({ ...ev, tipo: 'seguir' });
+      else if (r < 0.93) jogo.evento({ ...ev, tipo: 'compartilhar' });
+      else {
+        const d = [1, 1, 1, 1, 5, 5, 10, 30, 99, 100, 500][Math.floor(Math.random() * 11)];
+        jogo.evento({ ...ev, tipo: 'presente', presente: 'Presente', diamantes: d, qtd: 1 });
+      }
+    }
+    window.autoSimular = (ligar, ms = 350) => {
+      clearInterval(timer); timer = null;
+      if (ligar) timer = setInterval(passo, ms);
+      $('auto').textContent = timer ? '⏸ Parar auto' : '▶ Auto-simular';
+    };
+    $('auto').onclick = () => window.autoSimular(!timer);
+    if (q.has('auto')) window.autoSimular(true);
+
+    window.addEventListener('ponte', e => {
+      $('status').textContent = e.detail ? 'Ponte: conectada (eventos reais da live)' : 'Ponte: desconectada (normal no modo teste)';
+    });
+  })();
+</script>
+</body>
+</html>

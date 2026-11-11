@@ -1,0 +1,13 @@
+[Unit]
+Description=Transmissao 24/7 do jogo para o TikTok/YouTube
+After=lives-ponte.service
+Requires=lives-ponte.service
+
+[Service]
+EnvironmentFile=/etc/lives.env
+ExecStart=/opt/repositorio-luiz/lives/transmitir/transmitir.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

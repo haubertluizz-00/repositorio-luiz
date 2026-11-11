@@ -52,3 +52,9 @@ VPS (24h)
   - Liberação acontece na virada do dia (lote diário), não na hora exata.
   - Tempo mínimo ~7-8 dias de conta; seguidores >= ~50 parecem suficientes no Brasil.
 - Perfil: "Paisito 🌎 — Ache o país, vídeo novo todo dia" -> nicho de países; o jogo da live deve ser de países.
+
+## Status (11/11/2026)
+- FEITO: jogo "Guerra dos Países" (lives/jogo), ponte TikTok -> jogo (lives/ponte), transmissão RTMP 24/7 (lives/transmitir), guia em lives/README.md.
+- Testado aqui: jogo + simulador, ponte -> jogo via WebSocket, gravação de vídeo pelo pipeline Xvfb + Chromium + ffmpeg.
+- NÃO testado: conexão real com a live do TikTok (sessão na nuvem bloqueia o servidor de assinatura) e envio RTMP real.
+- Próximo: instalar na VPS, conseguir a chave de transmissão da Paisito, primeira live de teste.

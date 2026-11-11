@@ -1,0 +1,14 @@
+[Unit]
+Description=Ponte da live (le TikTok e serve o jogo)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/lives.env
+WorkingDirectory=/opt/repositorio-luiz/lives/ponte
+ExecStart=/usr/bin/node index.js --usuario ${TIKTOK_USUARIO}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

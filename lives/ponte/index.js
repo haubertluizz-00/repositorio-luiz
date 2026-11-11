@@ -1,0 +1,131 @@
+// Ponte: lê a live do TikTok e manda os eventos para o jogo.
+// Também serve os arquivos do jogo em http://localhost:PORTA
+//
+// Uso:
+//   node index.js --usuario paisitottk          (conecta na live de verdade)
+//   node index.js                               (só serve o jogo, sem TikTok)
+//
+// Variáveis opcionais:
+//   PORTA=8787
+//   EULER_API_KEY=...   chave do Euler Stream (assinatura); sem ela usa o plano grátis, que tem limite
+'use strict';
+
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { WebSocketServer } = require('ws');
+
+const args = process.argv.slice(2);
+const arg = (nome, padrao) => { const i = args.indexOf('--' + nome); return i >= 0 ? args[i + 1] : padrao; };
+
+const PORTA = Number(process.env.PORTA || arg('porta', 8787));
+const USUARIO = (arg('usuario', process.env.TIKTOK_USUARIO || '') || '').replace(/^@/, '');
+const PASTA_JOGO = path.resolve(__dirname, '..', 'jogo');
+const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.mp3': 'audio/mpeg' };
+
+const log = (...m) => console.log(new Date().toISOString().slice(11, 19), ...m);
+
+// ---------- Servidor do jogo ----------
+const servidor = http.createServer((req, res) => {
+  const url = new URL(req.url, 'http://x');
+  // Teste manual: curl -X POST localhost:8787/evento -d '{"tipo":"presente","nome":"luiz","diamantes":100}'
+  if (req.method === 'POST' && url.pathname === '/evento') {
+    const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+    if (!local) { res.writeHead(403); return res.end(); }
+    let corpo = '';
+    req.on('data', c => { corpo += c; if (corpo.length > 1e5) req.destroy(); });
+    req.on('end', () => {
+      try { enviar(JSON.parse(corpo)); res.end('ok\n'); } catch { res.writeHead(400); res.end('json inválido\n'); }
+    });
+    return;
+  }
+  let arquivo = path.normalize(path.join(PASTA_JOGO, decodeURIComponent(url.pathname)));
+  if (!arquivo.startsWith(PASTA_JOGO)) { res.writeHead(403); return res.end(); }
+  if (url.pathname === '/') arquivo = path.join(PASTA_JOGO, 'index.html');
+  fs.readFile(arquivo, (err, dados) => {
+    if (err) { res.writeHead(404); return res.end('não encontrado'); }
+    res.writeHead(200, { 'Content-Type': TIPOS[path.extname(arquivo)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+    res.end(dados);
+  });
+});
+
+const wss = new WebSocketServer({ server: servidor, path: '/ws' });
+function enviar(ev) {
+  const msg = JSON.stringify(ev);
+  for (const c of wss.clients) if (c.readyState === 1) c.send(msg);
+}
+wss.on('connection', () => log('jogo conectado na ponte'));
+
+servidor.listen(PORTA, () => log(`jogo em http://localhost:${PORTA}  (teste: http://localhost:${PORTA}/?sim=1)`));
+
+// ---------- TikTok ----------
+if (!USUARIO) {
+  log('sem --usuario: rodando só o jogo, sem ler a live');
+} else {
+  conectarTikTok();
+}
+
+function usuarioDe(d) {
+  const u = d.user || {};
+  const fotoUrls = (u.profilePicture && (u.profilePicture.urls || u.profilePicture.url)) || [];
+  return {
+    id: String(u.userId || u.uniqueId || 'anon'),
+    nome: u.nickname || u.uniqueId || 'anônimo',
+    foto: Array.isArray(fotoUrls) ? fotoUrls[0] : fotoUrls,
+  };
+}
+
+function conectarTikTok() {
+  const { TikTokLiveConnection, WebcastEvent, ControlEvent } = require('tiktok-live-connector');
+  const opcoes = { enableExtendedGiftInfo: true };
+  if (process.env.EULER_API_KEY) opcoes.signApiKey = process.env.EULER_API_KEY;
+
+  let conexao = null;
+  let tentando = false;
+
+  async function tentar() {
+    if (tentando) return;
+    tentando = true;
+    conexao = new TikTokLiveConnection(USUARIO, opcoes);
+
+    conexao.on(WebcastEvent.CHAT, d => enviar({ tipo: 'comentario', ...usuarioDe(d), texto: d.comment }));
+    conexao.on(WebcastEvent.LIKE, d => enviar({ tipo: 'like', ...usuarioDe(d), likes: d.likeCount || 1 }));
+    conexao.on(WebcastEvent.FOLLOW, d => enviar({ tipo: 'seguir', ...usuarioDe(d) }));
+    conexao.on(WebcastEvent.SHARE, d => enviar({ tipo: 'compartilhar', ...usuarioDe(d) }));
+    conexao.on(WebcastEvent.GIFT, d => {
+      const det = d.giftDetails || {};
+      const ext = d.extendedGiftInfo || {};
+      // presentes em sequência (combo): só conta quando a sequência termina
+      if (det.giftType === 1 && !d.repeatEnd) return;
+      const diamantes = det.diamondCount || ext.diamond_count || 1;
+      const ev = { tipo: 'presente', ...usuarioDe(d), presente: det.giftName || ext.name || 'presente', diamantes, qtd: d.repeatCount || 1 };
+      log(`presente: ${ev.nome} → ${ev.presente} x${ev.qtd} (${diamantes}💎)`);
+      enviar(ev);
+    });
+    conexao.on(WebcastEvent.STREAM_END, () => { log('live terminou'); religar(60); });
+    conexao.on(ControlEvent.DISCONNECTED, () => { log('desconectado do TikTok'); religar(20); });
+    conexao.on(ControlEvent.ERROR, e => log('erro:', (e && (e.info || e.message)) || e));
+
+    try {
+      const estado = await conexao.connect();
+      log(`conectado na live de @${USUARIO} (sala ${estado.roomId})`);
+      tentando = false;
+    } catch (e) {
+      const offline = e && /offline/i.test(e.constructor?.name + ' ' + e.message);
+      log(offline ? `@${USUARIO} não está ao vivo; tento de novo em 60s` : `falha ao conectar: ${e && e.message}`);
+      tentando = false;
+      religar(offline ? 60 : 30);
+    }
+  }
+
+  let timer = null;
+  function religar(seg) {
+    clearTimeout(timer);
+    try { conexao && conexao.disconnect(); } catch { /* já desconectado */ }
+    timer = setTimeout(tentar, seg * 1000);
+  }
+
+  tentar();
+}
+
+process.on('unhandledRejection', e => log('erro não tratado:', e && e.message));
