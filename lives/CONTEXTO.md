@@ -43,3 +43,12 @@ VPS (24h)
   - 3.841 pessoas entraram, 27 novos seguidores.
   - Presentes: a API pública retorna 0 (dado escondido) -> não dá para saber quanto ganha.
   - Não marcou como conteúdo de IA (aigc_self_disclosure_switch = false).
+
+## Dado real: quando a LIVE liberou (conta @paisitottk)
+- Conta criada: 02/11/2026 às 22:09 (Brasília) / 03/11 01:09 UTC.
+- LIVE liberou: 11/11/2026 à 00:00 (Brasília), segundo o usuário -> ~8 dias e 2h de conta.
+- Na hora: 158 seguidores, 23 vídeos, 1.541 curtidas, 18+.
+- Hipóteses (1 dado só, falta confirmar com outras contas):
+  - Liberação acontece na virada do dia (lote diário), não na hora exata.
+  - Tempo mínimo ~7-8 dias de conta; seguidores >= ~50 parecem suficientes no Brasil.
+- Perfil: "Paisito 🌎 — Ache o país, vídeo novo todo dia" -> nicho de países; o jogo da live deve ser de países.
