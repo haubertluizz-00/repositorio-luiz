@@ -4,11 +4,11 @@
 // Uso:
 //   node index.js --usuario paisitottk          (conecta na live de verdade)
 //   node index.js                               (só serve o jogo, sem TikTok)
-//   node index.js --jogo guerra                 (escolhe o jogo; padrão: escalada)
+//   node index.js --jogo escalada               (escolhe o jogo: arena (padrão), escalada, guerra)
 //
 // Variáveis opcionais:
 //   PORTA=8787
-//   JOGO=escalada
+//   JOGO=arena
 //   EULER_API_KEY=...   chave do Euler Stream (assinatura); sem ela usa o plano grátis, que tem limite
 'use strict';
 
@@ -22,7 +22,7 @@ const arg = (nome, padrao) => { const i = args.indexOf('--' + nome); return i >=
 
 const PORTA = Number(process.env.PORTA || arg('porta', 8787));
 const USUARIO = (arg('usuario', process.env.TIKTOK_USUARIO || '') || '').replace(/^@/, '');
-const JOGO = arg('jogo', process.env.JOGO || 'escalada');
+const JOGO = arg('jogo', process.env.JOGO || 'arena');
 const PASTA_JOGOS = path.resolve(__dirname, '..', 'jogos');
 const PASTA_DADOS = path.resolve(__dirname, 'dados');
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.mp3': 'audio/mpeg' };
@@ -43,6 +43,8 @@ const servidor = http.createServer((req, res) => {
     });
     return;
   }
+  // Foto de perfil passando pela ponte (o 3D só consegue usar imagem do mesmo endereço do jogo)
+  if (url.pathname === '/foto') return servirFoto(url.searchParams.get('u'), res);
   if (url.pathname === '/') { res.writeHead(302, { Location: `/${JOGO}/${url.search}` }); return res.end(); }
   let arquivo = path.normalize(path.join(PASTA_JOGOS, decodeURIComponent(url.pathname)));
   if (!arquivo.startsWith(PASTA_JOGOS + path.sep)) { res.writeHead(403); return res.end(); }
@@ -57,6 +59,29 @@ const servidor = http.createServer((req, res) => {
 // Com a VPS aberta na internet, defina CHAVE_JOGO e abra o jogo com ?k=CHAVE_JOGO.
 // Sem a chave certa ninguém conecta no jogo (nem apaga os níveis salvos).
 const CHAVE_JOGO = process.env.CHAVE_JOGO || '';
+const cacheFotos = new Map();
+const HOSTS_FOTO = /(^|\.)(tiktokcdn\.com|tiktokcdn-us\.com|tiktokcdn-eu\.com|ibyteimg\.com|byteimg\.com|muscdn\.com)$/;
+async function servirFoto(u, res) {
+  let alvo;
+  try { alvo = new URL(u); } catch { res.writeHead(400); return res.end(); }
+  if (alvo.protocol !== 'https:' || !HOSTS_FOTO.test(alvo.hostname)) { res.writeHead(403); return res.end(); }
+  let foto = cacheFotos.get(u);
+  if (!foto) {
+    try {
+      const r = await fetch(alvo, { signal: AbortSignal.timeout(8000) });
+      const tipo = r.headers.get('content-type') || '';
+      if (!r.ok || !tipo.startsWith('image/')) throw new Error('não é imagem');
+      const corpo = Buffer.from(await r.arrayBuffer());
+      if (corpo.length > 2e6) throw new Error('grande demais');
+      foto = { tipo, corpo };
+      cacheFotos.set(u, foto);
+      if (cacheFotos.size > 800) cacheFotos.delete(cacheFotos.keys().next().value);
+    } catch { res.writeHead(404); return res.end(); }
+  }
+  res.writeHead(200, { 'Content-Type': foto.tipo, 'Cache-Control': 'max-age=86400' });
+  res.end(foto.corpo);
+}
+
 const wss = new WebSocketServer({
   server: servidor, path: '/ws',
   verifyClient: ({ req }) => !CHAVE_JOGO || new URL(req.url, 'http://x').searchParams.get('k') === CHAVE_JOGO,

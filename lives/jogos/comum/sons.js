@@ -35,6 +35,11 @@ window.SONS = (() => {
     presente: () => { [523, 659, 784, 1047].forEach((f, i) => tom(f, 0.18, { tipo: 'square', vol: 0.06, atraso: i * 0.07 })); },
     pedra: () => { ruido(0.5, 0.35, 400); tom(120, 0.4, { tipo: 'sawtooth', vol: 0.1, ate: 40 }); },
     queda: () => tom(700, 0.5, { tipo: 'sawtooth', vol: 0.07, ate: 120 }),
+    bater: () => { ruido(0.08, 0.25, 1800); tom(180 + Math.random() * 60, 0.09, { tipo: 'square', vol: 0.06, ate: 90 }); },
+    cair: () => tom(600, 0.9, { tipo: 'sine', vol: 0.12, ate: 60 }),
+    bip: () => tom(880, 0.15, { tipo: 'square', vol: 0.08 }),
+    luta: () => { tom(220, 0.6, { tipo: 'sawtooth', vol: 0.1 }); tom(330, 0.6, { tipo: 'sawtooth', vol: 0.08 }); },
+    poder: () => { tom(200, 0.5, { tipo: 'sawtooth', vol: 0.08, ate: 1200 }); ruido(0.4, 0.15, 3000); },
     vitoria: () => { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tom(f, 0.25, { tipo: 'square', vol: 0.08, atraso: i * 0.13 })); },
   };
   return {

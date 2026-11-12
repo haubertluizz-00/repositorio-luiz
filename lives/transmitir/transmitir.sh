@@ -52,7 +52,7 @@ fi
 [ -n "$SOM_JOGO" ] && echo "som do jogo: capturando" || echo "som do jogo: desligado (instale pulseaudio para ter som)"
 
 abrir_navegador() {
-  DISPLAY="$TELA" PULSE_SINK=live "$CHROME" --no-sandbox --kiosk --no-first-run --disable-infobars --disable-gpu \
+  DISPLAY="$TELA" PULSE_SINK=live "$CHROME" --no-sandbox --kiosk --no-first-run --disable-infobars --use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader \
     --window-position=0,0 --window-size="${LARG},${ALT}" --force-device-scale-factor=1 \
     --autoplay-policy=no-user-gesture-required --disable-features=Translate,TranslateUI --lang=pt-BR \
     --user-data-dir="$PERFIL" "$URL_JOGO" >/dev/null 2>&1 &

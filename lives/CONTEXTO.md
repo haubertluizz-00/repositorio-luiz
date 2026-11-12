@@ -80,3 +80,8 @@ VPS (24h)
   digita o @ (que já precisa estar AO VIVO) e clica em Conectar. Opção de deploy no Render grátis + APK no celular.
 - NÃO automatiza colocar a live no ar: alguém abre a live (LIVE Studio no Windows ou celular) e captura a janela do jogo.
 - Recebemos só arquivos de configuração; falta a pasta src/ para rodar.
+
+## Decisão (12/11/2026): PC com Windows em casa + LIVE Studio, jogo novo "Arena das Bolinhas" 3D
+- Usuário não aparece na câmera; vai testar 24/7 (risco de desmonetização assumido) numa conta secundária.
+- Sem chave RTMP e sem Mac compatível -> transmite pelo PC Windows dele com o TikTok LIVE Studio capturando o Chrome.
+- Jogo novo: lives/jogos/arena (three.js 0.186 local, bloom, fotos de perfil via /foto da ponte). Padrão da ponte.

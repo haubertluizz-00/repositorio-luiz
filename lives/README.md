@@ -1,7 +1,43 @@
 # Lives interativas 24/7
 
-Dois jogos para live vertical (TikTok) em que o público entra com nome e foto e controla tudo.
-A ponte abre a **Escalada** por padrão; para trocar, use `JOGO=guerra` em `/etc/lives.env`.
+## Jeito mais simples: PC com Windows + TikTok LIVE Studio
+
+1. Instale o **Node.js** (nodejs.org, botão LTS), o **Chrome** e o **TikTok LIVE Studio**.
+2. Baixe este projeto (GitHub → branch `claude/bold-volta-0fz7a5` → Code → Download ZIP) e descompacte.
+3. Na pasta `lives/ponte`, clique com o botão direito → **Abrir no Terminal** e rode:
+   ```
+   npm install
+   node index.js --usuario SUA_CONTA
+   ```
+   (deixe a janela aberta; com chave do Euler: `$env:EULER_API_KEY="SUA_CHAVE"; node index.js --usuario SUA_CONTA`)
+4. No Chrome, abra `http://localhost:8787` (abre a **Arena das Bolinhas**; para trocar: `--jogo escalada` ou `--jogo guerra`).
+5. No LIVE Studio: conta da live, formato vertical, **Adicionar fonte → Captura de janela → Chrome**, **Go LIVE**.
+   A ponte conecta sozinha quando a live entra no ar (tenta de novo a cada minuto).
+6. Pode desligar o **monitor** pelo botão, mas não deixe o PC suspender e **não minimize o Chrome**.
+
+Teste sem live: `http://localhost:8787/?sim=1` (painel para simular comentários, likes e presentes).
+
+Três jogos para live vertical (TikTok) em que o público entra com nome e foto e controla tudo.
+A ponte abre a **Arena das Bolinhas** por padrão; para trocar, use `--jogo escalada` / `--jogo guerra` (ou `JOGO=` em `/etc/lives.env`).
+
+## Arena das Bolinhas (3D, padrão)
+
+Cada pessoa vira uma bolinha 3D com a foto de perfil. A arena encolhe e quem cai no abismo sai; a última em pé vence.
+
+| O público faz | Acontece no jogo |
+|---|---|
+| Comenta | Entra na arena; depois, cada comentário é um EMPURRÃO (1 a cada 1,5s) |
+| Curte | Dash rápido + um pouco de força |
+| Segue | Escudo 20s (não cai da arena) |
+| Compartilha | +força e empurrão forte |
+| Presente | +força (fica maior e mais pesada) |
+| Presente 5+ 💎 | ONDA DE CHOQUE em volta |
+| Presente 30+ 💎 | GIGANTE por 15s |
+| Presente 100+ 💎 | CHUVA DE METEOROS nos adversários |
+| Presente 500+ 💎 | TERREMOTO: todo mundo é jogado para a borda |
+
+Com pouca gente, entram bolinhas "CPU" para completar 6 por rodada. Vitórias e derrubadas ficam no Hall da Fama.
+Ajustes no começo de `jogos/arena/arena.js` (`CFG`). Precisa de placa de vídeo para ficar liso (no PC normal fica).
 
 ## Escalada dos Países (padrão)
 
