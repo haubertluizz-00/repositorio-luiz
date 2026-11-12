@@ -496,7 +496,7 @@ function fisica(dt) {
     }
     if (b.caindo) {
       b.vy -= 30 * dt; b.y += b.vy * dt; b.x += b.vx * dt; b.z += b.vz * dt;
-      if (b.y < -22) { if (estado === 'luta') eliminar(b); else soltar(b); }
+      if (b.y < -22) { if (estado === 'luta' || estado === 'vitoria') eliminar(b); else soltar(b); }
       continue;
     }
     // inteligência simples: escolhe alguém para empurrar de tempos em tempos
