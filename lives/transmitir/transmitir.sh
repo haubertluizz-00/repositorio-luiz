@@ -18,6 +18,10 @@ set -u
 LARG=720; ALT=1280; FPS=30
 TELA=":${TELA_NUM:-99}"
 URL_JOGO="${URL_JOGO:-http://localhost:8787/}"
+# se a ponte exige senha (CHAVE_JOGO), o navegador da transmissão precisa mandar ela também
+if [ -n "${CHAVE_JOGO:-}" ] && ! printf %s "$URL_JOGO" | grep -q "k="; then
+  case "$URL_JOGO" in *\?*) URL_JOGO="$URL_JOGO&k=$CHAVE_JOGO" ;; *) URL_JOGO="$URL_JOGO?k=$CHAVE_JOGO" ;; esac
+fi
 BITRATE="${BITRATE:-2500k}"
 CHROME="${CHROME:-$(command -v chromium || command -v chromium-browser || command -v google-chrome || true)}"
 PERFIL="$(mktemp -d /tmp/chrome-live.XXXX)"
