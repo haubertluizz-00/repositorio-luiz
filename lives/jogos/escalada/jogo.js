@@ -7,8 +7,8 @@
   const CFG = {
     W: 720, H: 1280,
     PAREDE: { x: 76, y: 300, w: 624, h: 650 },
-    ALTURA: 1000,              // metros até o topo
-    RODADA_SEG: 240,           // tempo máximo da rodada
+    ALTURA: 500,               // metros até o topo
+    RODADA_SEG: 180,           // tempo máximo da rodada
     FIM_SEG: 7,                // comemoração do vencedor
     RECARGA_COMENT: 1.5,       // segundos entre comentários que contam para subir
     INATIVO_SEG: 300,          // some da parede quem não interage há 5 min
@@ -16,7 +16,7 @@
     BOTS: 4,                   // alpinistas de enfeite quando a live está vazia
   };
   // Quanto cada ação faz subir (metros) — ajuste aqui
-  const SOBE = { comentario: 4, like: 0.8, seguir: 10, compartilhar: 25 };
+  const SOBE = { comentario: 8, like: 2, seguir: 15, compartilhar: 30 };
 
   const { desenhar: bandeira, paisDoTexto } = window.BANDEIRAS;
   const POR_COD = Object.fromEntries(window.PAISES.map(p => [p.cod, p]));
@@ -162,19 +162,19 @@
     const d = Math.max(1, (ev.diamantes || 1) * (ev.qtd || 1));
     const j = entrar(ev, null);
     ganharXp(j, d * 3);
-    let efeito = `+${Math.round(Math.min(8 * d, 60))}m`;
-    subir(j, Math.min(8 * d, 60));
-    if (d >= 5) { j.escudoAte = Math.max(j.escudoAte, agora + 10); subir(j, 30); efeito = 'CORDA + escudo'; }
+    let efeito = `+${Math.round(Math.min(5 * d, 40))}m`;
+    subir(j, Math.min(5 * d, 40));
+    if (d >= 5) { j.escudoAte = Math.max(j.escudoAte, agora + 10); subir(j, 20); efeito = 'CORDA + escudo'; }
     if (d >= 30) {
       const alvo = lider(j.id);
-      if (alvo && alvo.alt > 0) { soltarPedra(alvo.x, 34, 80, ev.nome); efeito = `PEDRA em ${alvo.perfil.nome}`; }
+      if (alvo && alvo.alt > 0) { soltarPedra(alvo.x, 34, 60, ev.nome); efeito = `PEDRA em ${alvo.perfil.nome}`; }
     }
     if (d >= 100) {
-      j.escudoAte = Math.max(j.escudoAte, agora + 15); subir(j, 150); efeito = 'JETPACK!';
-      mostrarBanner(`${ev.nome} ligou o JETPACK`, `+150m e escudo · ${j.pais.nome}`, j.pais.cor);
+      j.escudoAte = Math.max(j.escudoAte, agora + 15); subir(j, 100); efeito = 'JETPACK!';
+      mostrarBanner(`${ev.nome} ligou o JETPACK`, `+100m e escudo · ${j.pais.nome}`, j.pais.cor);
     }
     if (d >= 500) {
-      for (const o of parede.values()) if (o !== j) cair(o, 120, null);
+      for (const o of parede.values()) if (o !== j) cair(o, 80, null);
       tremor = 1.2; efeito = 'AVALANCHE!';
       mostrarBanner('AVALANCHE!', `${ev.nome} derrubou todo mundo`, '#dfe6e9');
       SOM('pedra');
@@ -185,7 +185,7 @@
   }
 
   // ---------- Pedras ----------
-  function soltarPedra(x, r = 18, dano = 40, quem = null) {
+  function soltarPedra(x, r = 18, dano = 25, quem = null) {
     pedras.push({ x, y: CFG.PAREDE.y - 30, r, dano, quem, vy: 380, rot: 0, atingidos: new Set() });
   }
 
@@ -225,7 +225,7 @@
     parede.set(id, {
       id, perfil: { nome: '', xp: 0 }, pais: POR_COD[cod], bot: true, foto: null,
       x: CFG.PAREDE.x + 40 + Math.random() * (CFG.PAREDE.w - 80),
-      alt: rnd(0, 300), altVis: 0, escudoAte: 0, ativo: agora, balao: null, golpeAte: 0, vel: rnd(1, 3),
+      alt: rnd(0, CFG.ALTURA * 0.3), altVis: 0, escudoAte: 0, ativo: agora, balao: null, golpeAte: 0, vel: rnd(1, 3),
     });
   }
 
@@ -308,7 +308,7 @@
     c.restore();
     // régua de altura
     c.font = 'bold 15px system-ui, sans-serif'; c.textAlign = 'right';
-    for (let m = 0; m <= CFG.ALTURA; m += 100) {
+    for (let m = 0; m <= CFG.ALTURA; m += CFG.ALTURA / 10) {
       const y = yDe(m);
       c.fillStyle = 'rgba(255,255,255,.55)'; c.fillText(m === CFG.ALTURA ? 'TOPO' : `${m}m`, P.x - 8, y + 5);
       c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(P.x, y, P.w, 1);
