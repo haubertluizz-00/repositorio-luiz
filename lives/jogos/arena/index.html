@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena das Bolinhas</title>
+<style>
+  :root {
+    --rosa: #ff3df0; --ciano: #36e4ff; --ouro: #ffd34d; --vermelho: #ff4766;
+    --vidro: rgba(10, 8, 30, .62); --borda: rgba(255, 255, 255, .14);
+  }
+  html, body { margin: 0; height: 100%; background: #05030f; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
+  #fora { display: flex; height: 100%; align-items: center; justify-content: center; gap: 16px; }
+  #caixa { position: relative; }
+  #palco { position: absolute; left: 0; top: 0; width: 720px; height: 1280px; transform-origin: 0 0; overflow: hidden; background: #05030f; color: #fff; }
+  #palco canvas { position: absolute; inset: 0; }
+  #rotulos { position: absolute; inset: 0; pointer-events: none; }
+
+  /* nomes em cima das bolinhas */
+  .nome { font-weight: 800; font-size: 15px; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+          background: rgba(0,0,0,.55); border: 1.5px solid var(--cor, #fff); text-shadow: 0 1px 2px #000; transform: translateY(-6px); }
+  .nome.lider { font-size: 18px; border-color: var(--ouro); color: var(--ouro); box-shadow: 0 0 14px rgba(255,211,77,.6); }
+  .nome .coroa { margin-right: 4px; }
+  .energia { height: 4px; margin: 3px 0 1px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
+  .energia i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff9ad5, #ffffff); box-shadow: 0 0 6px #ff9ad5; }
+  .balao { position: absolute; bottom: 100%; left: 50%; transform: translate(-50%, -6px); background: #fff; color: #111;
+           font-weight: 700; font-size: 13px; padding: 3px 9px; border-radius: 10px; white-space: nowrap; }
+
+  /* HUD */
+  .hud { position: absolute; left: 0; right: 0; pointer-events: none; }
+  #topo { top: 124px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  #dica { background: var(--vidro); border: 1px solid var(--borda); border-radius: 999px; padding: 10px 22px;
+          font-size: 24px; font-weight: 800; backdrop-filter: blur(6px); transition: opacity .3s; }
+  #titulo { font-size: 58px; font-weight: 900; font-style: italic; letter-spacing: 1px; line-height: 1;
+            background: linear-gradient(90deg, var(--ciano), var(--rosa)); -webkit-background-clip: text; background-clip: text; color: transparent;
+            filter: drop-shadow(0 0 18px rgba(255,61,240,.55)); }
+  #estado { display: flex; gap: 10px; }
+  .chip { background: var(--vidro); border: 1px solid var(--borda); border-radius: 12px; padding: 6px 14px; font-size: 20px; font-weight: 800; }
+  .chip b { color: var(--ciano); }
+  .chip.perigo b { color: var(--vermelho); }
+
+  #centro { top: 470px; text-align: center; }
+  #grande { font-size: 150px; font-weight: 900; font-style: italic; color: #fff; text-shadow: 0 0 30px var(--rosa), 0 0 60px var(--rosa); opacity: 0; transition: opacity .2s, transform .2s; }
+  #grande.ver { opacity: 1; }
+  #grande.pequeno { font-size: 64px; }
+  #faixa { margin: 0 auto; width: 100%; padding: 14px 0; background: rgba(0,0,0,.72); border-top: 4px solid var(--ouro); border-bottom: 4px solid var(--ouro);
+           opacity: 0; transition: opacity .25s; }
+  #faixa.ver { opacity: 1; }
+  #faixa .t { font-size: 38px; font-weight: 900; }
+  #faixa .s { font-size: 20px; color: #ddd; font-weight: 700; margin-top: 4px; }
+
+  #vitoria { position: absolute; left: 0; right: 0; top: 380px; text-align: center; opacity: 0; transition: opacity .4s; pointer-events: none; }
+  #vitoria.ver { opacity: 1; }
+  #vitoria .quem { font-size: 56px; font-weight: 900; color: var(--ouro); text-shadow: 0 0 24px rgba(255,211,77,.8), 0 3px 0 #000; }
+  #vitoria .txt { font-size: 34px; font-weight: 900; font-style: italic; }
+  #vitoria .info { font-size: 20px; color: #ddd; font-weight: 700; margin-top: 6px; }
+
+  #baixo { top: 1010px; display: grid; grid-template-columns: 1fr 236px; gap: 12px; padding: 0 22px; }
+  #feed div { font-size: 17px; font-weight: 700; margin-bottom: 6px; text-shadow: 0 1px 3px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #feed i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; background: var(--c); box-shadow: 0 0 8px var(--c); }
+  #fama { background: var(--vidro); border: 1px solid rgba(255,211,77,.35); border-radius: 14px; padding: 10px 12px; }
+  #fama h3 { margin: 0 0 6px; font-size: 15px; color: var(--ouro); font-weight: 900; letter-spacing: .5px; }
+  #fama div { display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; padding: 2px 0; }
+  #fama div span:last-child { color: var(--ouro); }
+  #regras { position: absolute; left: 22px; right: 22px; top: 1196px; display: flex; gap: 8px; justify-content: center; }
+  #regras .chip { font-size: 15px; padding: 6px 10px; }
+
+  /* simulador (?sim=1) */
+  #sim { display: none; width: 300px; max-height: 96vh; overflow: auto; background: #151b33; color: #fff; border-radius: 12px; padding: 14px; box-sizing: border-box; font-size: 14px; }
+  body.sim #sim { display: block; }
+  #sim h2 { margin: 0 0 8px; font-size: 16px; }
+  #sim label { display: block; margin: 8px 0 4px; color: #aab; }
+  #sim input { width: 100%; padding: 8px; border-radius: 8px; border: 0; box-sizing: border-box; }
+  #sim .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+  #sim button { padding: 9px 6px; border: 0; border-radius: 8px; background: #2d3561; color: #fff; font-weight: 700; cursor: pointer; }
+  #sim button.ouro { background: #8a6d00; }
+  #sim .status { margin-top: 10px; color: #aab; font-size: 12px; }
+  @media (max-width: 760px) { #fora { flex-direction: column; } #sim { width: 100%; max-height: 38vh; } }
+</style>
+<script type="importmap">
+{ "imports": { "three": "../comum/vendor/three/three.module.js", "three/addons/": "../comum/vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="fora">
+  <div id="caixa">
+    <div id="palco">
+      <div id="rotulos"></div>
+      <div class="hud" id="topo">
+        <div id="dica">💬 Comente para ENTRAR na arena</div>
+        <div id="titulo">ARENA</div>
+        <div id="estado">
+          <div class="chip" id="chipEstado">Aguardando jogadores</div>
+          <div class="chip" id="chipVivos">Vivos: <b>0</b></div>
+        </div>
+      </div>
+      <div class="hud" id="centro">
+        <div id="grande"></div>
+        <div id="faixa"><div class="t"></div><div class="s"></div></div>
+      </div>
+      <div id="vitoria"><div class="quem"></div><div class="txt">VENCEU A ARENA!</div><div class="info"></div></div>
+      <div class="hud" id="baixo">
+        <div id="feed"></div>
+        <div id="fama"><h3>🏆 HALL DA FAMA</h3><div id="famaLista"><div><span>ninguém ainda…</span><span></span></div></div></div>
+      </div>
+      <div class="hud" id="regras">
+        <div class="chip">💬 1 empurra · 2 pula · 3 segura</div>
+        <div class="chip">❤️ super</div>
+        <div class="chip">🎁 + 💎 = + poder</div>
+      </div>
+    </div>
+  </div>
+  <div id="sim">
+    <h2>Simulador da live</h2>
+    <label for="nome">Nome de quem interage</label>
+    <input id="nome" value="luiz">
+    <label for="texto">Comentário</label>
+    <input id="texto" value="bora!!">
+    <div class="botoes">
+      <button data-ev="comentario">💬 Comentar</button>
+      <button data-ev="like">❤️ Like x5</button>
+      <button data-ev="seguir">➕ Seguir</button>
+      <button data-ev="compartilhar">🔁 Compartilhar</button>
+      <button class="ouro" data-d="1">🎁 1 💎</button>
+      <button class="ouro" data-d="5">🎁 5 💎</button>
+      <button class="ouro" data-d="30">🎁 30 💎</button>
+      <button class="ouro" data-d="100">🎁 100 💎</button>
+      <button class="ouro" data-d="500">🎁 500 💎</button>
+      <button id="auto">▶ Auto-simular</button>
+    </div>
+    <div class="status" id="status">Ponte: desconectada</div>
+  </div>
+</div>
+<script src="../comum/sons.js"></script>
+<script type="module" src="arena.js"></script>
+<script type="module">
+  // Simulador: abra com ?sim=1 (teste sem live). ?auto=1 liga o público de teste sozinho.
+  const q = new URLSearchParams(location.search);
+  if (q.has('sim')) document.body.classList.add('sim');
+  const $ = id => document.getElementById(id);
+  const base = () => ({ id: $('nome').value.trim() || 'teste', nome: $('nome').value.trim() || 'teste' });
+  document.querySelectorAll('#sim [data-ev]').forEach(b => b.onclick = () => {
+    const ev = { ...base(), tipo: b.dataset.ev };
+    if (ev.tipo === 'comentario') ev.texto = $('texto').value;
+    if (ev.tipo === 'like') ev.likes = 5;
+    jogo.evento(ev);
+  });
+  document.querySelectorAll('#sim [data-d]').forEach(b => b.onclick = () =>
+    jogo.evento({ ...base(), tipo: 'presente', presente: 'Presente', diamantes: +b.dataset.d, qtd: 1 }));
+  const nomes = ['ana', 'joao', 'pedro', 'maria', 'lucas', 'bia', 'gabi', 'davi', 'leo', 'duda', 'rafa', 'nina', 'theo', 'enzo', 'malu', 'caio'];
+  const falas = ['bora', 'kkkk', 'vai!!', '1', '1', '2', '3', 'pula', 'segura', 'sai daí'];
+  let timer = null;
+  function passo() {
+    const n = nomes[Math.floor(Math.random() * nomes.length)];
+    const r = Math.random(), ev = { id: n, nome: n };
+    if (r < 0.5) jogo.evento({ ...ev, tipo: 'comentario', texto: falas[Math.floor(Math.random() * falas.length)] });
+    else if (r < 0.88) jogo.evento({ ...ev, tipo: 'like', likes: 1 + Math.floor(Math.random() * 6) });
+    else if (r < 0.92) jogo.evento({ ...ev, tipo: 'seguir' });
+    else if (r < 0.94) jogo.evento({ ...ev, tipo: 'compartilhar' });
+    else jogo.evento({ ...ev, tipo: 'presente', presente: 'Presente', diamantes: [1, 1, 1, 5, 5, 30, 100][Math.floor(Math.random() * 7)], qtd: 1 });
+  }
+  window.autoSimular = (ligar, ms = 400) => {
+    clearInterval(timer); timer = null;
+    if (ligar) timer = setInterval(passo, ms);
+    $('auto').textContent = timer ? '⏸ Parar auto' : '▶ Auto-simular';
+  };
+  $('auto').onclick = () => window.autoSimular(!timer);
+  if (q.has('auto')) window.autoSimular(true);
+  window.addEventListener('ponte', e => { $('status').textContent = e.detail ? 'Ponte: conectada (eventos reais da live)' : 'Ponte: desconectada'; });
+
+  // encaixa o palco 720x1280 na janela
+  function encaixar() {
+    const lado = document.body.classList.contains('sim') && innerWidth > 760 ? 330 : 0;
+    const alturaMax = document.body.classList.contains('sim') && innerWidth <= 760 ? innerHeight * 0.6 : innerHeight;
+    const k = Math.min(alturaMax / 1280, (innerWidth - lado) / 720);
+    $('palco').style.transform = `scale(${k})`;
+    $('caixa').style.width = 720 * k + 'px'; $('caixa').style.height = 1280 * k + 'px';
+  }
+  addEventListener('resize', encaixar); encaixar();
+</script>
+</body>
+</html>
