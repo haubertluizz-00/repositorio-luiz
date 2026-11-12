@@ -22,6 +22,8 @@
           background: rgba(0,0,0,.55); border: 1.5px solid var(--cor, #fff); text-shadow: 0 1px 2px #000; transform: translateY(-6px); }
   .nome.lider { font-size: 18px; border-color: var(--ouro); color: var(--ouro); box-shadow: 0 0 14px rgba(255,211,77,.6); }
   .nome .coroa { margin-right: 4px; }
+  .energia { height: 4px; margin: 3px 0 1px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
+  .energia i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff9ad5, #ffffff); box-shadow: 0 0 6px #ff9ad5; }
   .balao { position: absolute; bottom: 100%; left: 50%; transform: translate(-50%, -6px); background: #fff; color: #111;
            font-weight: 700; font-size: 13px; padding: 3px 9px; border-radius: 10px; white-space: nowrap; }
 
@@ -103,10 +105,9 @@
         <div id="fama"><h3>🏆 HALL DA FAMA</h3><div id="famaLista"><div><span>ninguém ainda…</span><span></span></div></div></div>
       </div>
       <div class="hud" id="regras">
-        <div class="chip">💬 entra / empurra</div>
-        <div class="chip">❤️ dash</div>
-        <div class="chip">🎁 poderes</div>
-        <div class="chip">➕ escudo</div>
+        <div class="chip">💬 1 empurra · 2 pula · 3 segura</div>
+        <div class="chip">❤️ super</div>
+        <div class="chip">🎁 + 💎 = + poder</div>
       </div>
     </div>
   </div>
@@ -148,7 +149,7 @@
   document.querySelectorAll('#sim [data-d]').forEach(b => b.onclick = () =>
     jogo.evento({ ...base(), tipo: 'presente', presente: 'Presente', diamantes: +b.dataset.d, qtd: 1 }));
   const nomes = ['ana', 'joao', 'pedro', 'maria', 'lucas', 'bia', 'gabi', 'davi', 'leo', 'duda', 'rafa', 'nina', 'theo', 'enzo', 'malu', 'caio'];
-  const falas = ['bora', 'kkkk', 'vai!!', 'empurra', 'eu', 'entrei', '🔥🔥', 'sai daí'];
+  const falas = ['bora', 'kkkk', 'vai!!', '1', '1', '2', '3', 'pula', 'segura', 'sai daí'];
   let timer = null;
   function passo() {
     const n = nomes[Math.floor(Math.random() * nomes.length)];

@@ -11,10 +11,13 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 // ---------- Ajustes do jogo ----------
 const CFG = {
   R0: 10,              // raio da arena no começo
-  R_MIN: 3.2,          // raio mínimo depois de encolher
-  ESPERA_SEG: 12,      // tempo de entrada antes de cada rodada
-  ENCOLHE_DE: 12,      // segundos de luta antes de começar a encolher
-  ENCOLHE_ATE: 70,     // segundo da luta em que chega no raio mínimo
+  R_MIN: 3.6,          // raio mínimo depois de encolher
+  ESPERA_SEG: 20,      // tempo de entrada antes de cada rodada
+  ENCOLHE_DE: 35,      // segundos de luta antes de começar a encolher
+  ENCOLHE_ATE: 150,    // segundo da luta em que chega no raio mínimo (rodada de ~2,5 a 3 min)
+  RECARGA_PULO: 5,     // comentário "2"/"pula"
+  RECARGA_SEGURA: 8,   // comentário "3"/"segura"
+  LIKES_SUPER: 60,     // likes acumulados para soltar um SUPER EMPURRÃO automático
   VITORIA_SEG: 7,
   MIN_NA_RODADA: 6,    // completa com bolinhas CPU se tiver pouca gente
   MAX_BOLAS: 50,
@@ -207,14 +210,17 @@ function criarBola(id, { nome, foto, bot = false }) {
 
   const div = document.createElement('div'); div.className = 'nome'; div.style.setProperty('--cor', cor);
   const txt = document.createElement('span'); txt.textContent = bot ? 'CPU' : nome; div.appendChild(txt);
+  const barra = document.createElement('div'); barra.className = 'energia'; const enchimento = document.createElement('i'); barra.appendChild(enchimento);
+  if (!bot) div.appendChild(barra);
   const rot = new CSS2DObject(div); grupo.add(rot);
   cena.add(grupo);
 
   const b = {
-    id, nome, bot, cor, grupo, corpo, anel, escudo, rot, div, txt,
+    id, nome, bot, cor, grupo, corpo, anel, escudo, rot, div, txt, enchimento,
     x: 0, z: 0, y: 8, vx: 0, vz: 0, vy: 0, poder: 1, gigAte: 0, escudoAte: 0,
     viva: true, caindo: false, entrando: true, ia: rnd(0.5, 1.5), ultimoGolpe: null,
-    ultimoComent: -99, ultimoLike: -99, ativo: agora, balao: null, lider: false,
+    ultimoComent: -99, ultimoLike: -99, ultimoPulo: -99, ultimaAncora: -99, ancoraAte: 0, pulando: false, energia: 0,
+    ativo: agora, balao: null, lider: false,
   };
   soltar(b);
   bolas.set(id, b);
@@ -222,7 +228,7 @@ function criarBola(id, { nome, foto, bot = false }) {
 }
 
 function raio(b) { return clamp(0.8 + 0.06 * Math.sqrt(b.poder), 0.8, 1.8) * (agora < b.gigAte ? 1.6 : 1); }
-function massa(b) { const r = raio(b); return r * r * (agora < b.gigAte ? 4 : 1); }
+function massa(b) { const r = raio(b); return r * r * (agora < b.gigAte ? 4 : 1) * (agora < b.ancoraAte ? 3 : 1); }
 
 function soltar(b) {
   const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * R * 0.65;
@@ -316,34 +322,72 @@ function evento(ev) {
   ev.nome = String(ev.nome || 'anônimo').slice(0, 16);
   if (ev.tipo === 'comentario') {
     const b = entrar(ev); if (!b) return;
-    b.balao = { texto: String(ev.texto || '').slice(0, 24), ate: agora + 2.5 };
-    if (agora - b.ultimoComent > CFG.RECARGA_COMENT) { b.ultimoComent = agora; dash(b, 12); }
+    const texto = String(ev.texto || '').trim();
+    b.balao = { texto: texto.slice(0, 24), ate: agora + 2.5 };
+    comando(b, texto.toLowerCase());
   } else if (ev.tipo === 'like') {
     const b = entrar(ev); if (!b) return;
-    if (agora - b.ultimoLike > CFG.RECARGA_LIKE) { b.ultimoLike = agora; dash(b, 4 + Math.min(ev.likes || 1, 10) * 0.6); }
-    b.poder += Math.min(0.05 * (ev.likes || 1), 0.5);
+    const n = clamp(ev.likes || 1, 1, 30);
+    if (agora - b.ultimoLike > CFG.RECARGA_LIKE) { b.ultimoLike = agora; dash(b, 3 + Math.min(n, 10) * 0.4); }
+    b.energia += n;
+    if (b.energia >= CFG.LIKES_SUPER) { b.energia = 0; superEmpurrao(b); }
   } else if (ev.tipo === 'seguir') {
     const b = entrar(ev); if (!b) return;
-    b.escudoAte = agora + 20; b.poder += 3; SOM('escudo');
+    const perfil = perfis[ev.id];
+    // escudo só na PRIMEIRA vez que a pessoa segue (deixar de seguir e seguir de novo não vale)
+    if (perfil.seguiu) return;
+    perfil.seguiu = true; sujo = true;
+    b.escudoAte = agora + 20; SOM('escudo');
     noFeed(`${ev.nome} seguiu → ESCUDO 20s`, '#36e4ff');
   } else if (ev.tipo === 'compartilhar') {
     const b = entrar(ev); if (!b) return;
-    b.poder += 10; dash(b, 14);
-    noFeed(`${ev.nome} compartilhou → +força`, b.cor);
+    b.energia += 20;
+    if (b.energia >= CFG.LIKES_SUPER) { b.energia = 0; superEmpurrao(b); }
+    noFeed(`${ev.nome} compartilhou → +energia`, b.cor);
   } else if (ev.tipo === 'presente') {
     presente(ev);
   }
 }
 
+// Comandos pelo chat: 1/empurra (padrão), 2/pula, 3/segura
+function comando(b, t) {
+  if (/^(2|pula|pulo|pular)\b/.test(t)) {
+    if (agora - b.ultimoPulo < CFG.RECARGA_PULO || !b.viva || b.caindo || b.entrando || b.pulando) return;
+    b.ultimoPulo = agora; b.pulando = true; b.vy = 13; SOM('entrou', 0.1);
+    return;
+  }
+  if (/^(3|segura|defesa|defende|trava)\b/.test(t)) {
+    if (agora - b.ultimaAncora < CFG.RECARGA_SEGURA) return;
+    b.ultimaAncora = agora; b.ancoraAte = agora + 3; SOM('escudo', 0.1);
+    explodir(b.x, 0.3, b.z, 20, '#bfc8ff', 3, 1);
+    return;
+  }
+  if (agora - b.ultimoComent > CFG.RECARGA_COMENT) { b.ultimoComent = agora; dash(b, 9); }
+}
+
+function superEmpurrao(b) {
+  if (!b.viva || b.caindo || b.entrando) return;
+  dash(b, 18);
+  onda(b.x, b.z, 4, '#ffffff'); empurrarArea(b, b.x, b.z, 4, 15);
+  explodir(b.x, 0.5, b.z, 40, '#ffffff', 8, 4); SOM('poder', 0.2);
+  noFeed(`${b.nome} soltou o SUPER EMPURRÃO (curtidas)`, '#ff9ad5');
+}
+
+// Presente: o poder cresce com o valor. Até o menor presente (1 💎) é mais forte que like e seguir.
 function presente(ev) {
   const d = Math.max(1, (ev.diamantes || 1) * (ev.qtd || 1));
   const b = entrar(ev); if (!b) return;
-  b.poder += 3 * d;
-  let efeito = `+${3 * d} de força`;
+  const nivel = Math.log2(1 + d);                 // 1💎=1 · 5💎=2,6 · 30💎=5 · 100💎=6,7 · 500💎=9 · 1000💎=10
+  b.poder += 2 * d;
+  b.energia += Math.min(d * 5, CFG.LIKES_SUPER);
+  let efeito = 'EMPURRÃO';
   if (b.viva && !b.caindo) {
-    if (d >= 5) { onda(b.x, b.z, 6, b.cor); empurrarArea(b, b.x, b.z, 6, 22); explodir(b.x, 0.5, b.z, 60, b.cor, 10, 3); efeito = 'ONDA DE CHOQUE'; }
-    if (d >= 30) { b.gigAte = agora + 15; efeito = 'virou GIGANTE'; mostrarFaixa(`${ev.nome} virou GIGANTE`, 'por 15 segundos', b.cor); }
-    if (d >= 100) { for (let i = 0; i < 5; i++) setTimeout(() => meteoro(b), i * 350); efeito = 'chuva de METEOROS'; mostrarFaixa('CHUVA DE METEOROS', `presente de ${ev.nome}`, '#ff7a3d'); }
+    const alcance = 2.8 + nivel * 0.8, forca = 14 + nivel * 4;
+    onda(b.x, b.z, alcance, b.cor); empurrarArea(b, b.x, b.z, alcance, forca);
+    explodir(b.x, 0.5, b.z, Math.round(20 + nivel * 12), b.cor, 6 + nivel, 3);
+    if (d >= 5) efeito = 'ONDA DE CHOQUE';
+    if (d >= 30) { const s = Math.round(clamp(8 + d / 10, 8, 30)); b.gigAte = agora + s; efeito = `GIGANTE por ${s}s`; mostrarFaixa(`${ev.nome} virou GIGANTE`, `por ${s} segundos`, b.cor); }
+    if (d >= 100) { const n = clamp(3 + Math.floor(d / 60), 3, 12); for (let i = 0; i < n; i++) setTimeout(() => meteoro(b), i * 300); efeito = `${n} METEOROS`; mostrarFaixa(`${n} METEOROS`, `presente de ${ev.nome}`, '#ff7a3d'); }
     if (d >= 500) {
       b.escudoAte = agora + 20; tremor = 1.6;
       for (const o of bolas.values()) if (o !== b && o.viva && !o.caindo && agora >= o.escudoAte) { const a = Math.atan2(o.z, o.x); o.vx += Math.cos(a) * 16; o.vz += Math.sin(a) * 16; o.ultimoGolpe = { id: b.id, t: agora }; }
@@ -441,6 +485,15 @@ function fisica(dt) {
       if (b.y <= 0) { b.y = 0; b.vy = 0; b.entrando = false; explodir(b.x, 0.2, b.z, 25, b.cor, 6, 3); onda(b.x, b.z, 2.5, b.cor); SOM('bater', 0.1); }
       continue;
     }
+    if (b.pulando) {
+      b.vy -= 32 * dt; b.y += b.vy * dt; b.x += b.vx * dt; b.z += b.vz * dt;
+      if (b.y <= 0) {
+        b.y = 0; b.vy = 0; b.pulando = false;
+        if (Math.hypot(b.x, b.z) > R && agora >= b.escudoAte) { b.caindo = true; b.vy = 0; continue; }
+        onda(b.x, b.z, 3.5, b.cor); empurrarArea(b, b.x, b.z, 3.5, 13); explodir(b.x, 0.2, b.z, 30, b.cor, 7, 3); SOM('bater', 0.05);
+      }
+      continue;
+    }
     if (b.caindo) {
       b.vy -= 30 * dt; b.y += b.vy * dt; b.x += b.vx * dt; b.z += b.vz * dt;
       if (b.y < -22) { if (estado === 'luta') eliminar(b); else soltar(b); }
@@ -449,12 +502,12 @@ function fisica(dt) {
     // inteligência simples: escolhe alguém para empurrar de tempos em tempos
     b.ia -= dt;
     if (b.ia <= 0 && estado !== 'vitoria') {
-      b.ia = rnd(0.7, 1.7);
+      b.ia = rnd(1.2, 2.4);
       const d = Math.hypot(b.x, b.z);
       if (d > R * 0.78) { b.vx += -b.x / d * 6; b.vz += -b.z / d * 6; }
-      else dash(b, rnd(5, 9));
+      else dash(b, rnd(3.5, 6.5));
     }
-    const atrito = Math.exp(-1.1 * dt);
+    const atrito = Math.exp(-(agora < b.ancoraAte ? 4 : 1.3) * dt);
     b.vx *= atrito; b.vz *= atrito;
     const vel = Math.hypot(b.vx, b.vz); if (vel > 26) { b.vx *= 26 / vel; b.vz *= 26 / vel; }
     b.x += b.vx * dt; b.z += b.vz * dt;
@@ -510,6 +563,8 @@ function atualizarVisual(dt) {
     b.grupo.position.set(b.x, b.y + s, b.z);
     b.corpo.lookAt(camera.position);
     b.escudo.visible = agora < b.escudoAte;
+    if (b.enchimento) b.enchimento.style.width = clamp(b.energia / CFG.LIKES_SUPER * 100, 0, 100) + '%';
+    b.anel.material.color.set(agora < b.ancoraAte ? '#bfc8ff' : b.cor);
     b.anel.position.set(b.x, 0.03, b.z); b.anel.scale.setScalar(s); b.anel.visible = !b.caindo && b.y < 1;
     b.rot.position.set(0, s + 0.55, 0);
     const ehLider = b === lider && estado !== 'espera';
@@ -563,7 +618,7 @@ function atualizarVisual(dt) {
 }
 
 // ---------- HUD ----------
-const DICAS = ['💬 Comente para ENTRAR na arena', '💬 Cada comentário = um EMPURRÃO', '❤️ Curtir dá dash', '🎁 Presente = poderes e força', '➕ Seguir = escudo 20s', '🏆 Última bolinha em pé vence!'];
+const DICAS = ['💬 Comente para ENTRAR na arena', '💬 1 = EMPURRA  ·  2 = PULA  ·  3 = SEGURA', '❤️ Curtidas enchem a barra do SUPER EMPURRÃO', '🎁 Quanto MAIOR o presente, MAIOR o poder', '➕ Seguir = escudo (só na 1ª vez)', '🏆 Última bolinha em pé vence!'];
 let tHud = 0;
 function atualizarHud(dt) {
   tHud -= dt; if (tHud > 0) return; tHud = 0.2;
@@ -587,7 +642,7 @@ function atualizarHud(dt) {
 // ---------- Salvar / carregar ----------
 let ws = null;
 function dados() {
-  const lista = Object.entries(perfis).filter(([, p]) => p.vitorias || p.abates).sort((a, b) => b[1].vitorias - a[1].vitorias).slice(0, 5000);
+  const lista = Object.entries(perfis).filter(([, p]) => p.vitorias || p.abates || p.seguiu).sort((a, b) => b[1].vitorias - a[1].vitorias).slice(0, 5000);
   return { perfis: Object.fromEntries(lista) };
 }
 function carregar(d) {

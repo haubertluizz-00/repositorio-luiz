@@ -23,17 +23,19 @@ A ponte abre a **Arena das Bolinhas** por padrão; para trocar, use `--jogo esca
 ## Arena das Bolinhas (3D, padrão)
 
 Cada pessoa vira uma bolinha 3D com a foto de perfil. A arena encolhe e quem cai no abismo sai; a última em pé vence.
+Rodada: 20s para entrar + luta de ~2,5 a 3 minutos (a arena só começa a encolher depois de 35s).
 
 | O público faz | Acontece no jogo |
 |---|---|
-| Comenta | Entra na arena; depois, cada comentário é um EMPURRÃO (1 a cada 1,5s) |
-| Curte | Dash rápido + um pouco de força |
-| Segue | Escudo 20s (não cai da arena) |
-| Compartilha | +força e empurrão forte |
-| Presente | +força (fica maior e mais pesada) |
-| Presente 5+ 💎 | ONDA DE CHOQUE em volta |
-| Presente 30+ 💎 | GIGANTE por 15s |
-| Presente 100+ 💎 | CHUVA DE METEOROS nos adversários |
+| Comenta qualquer coisa / `1` | Entra na arena; depois, EMPURRÃO (1 a cada 1,5s) |
+| Comenta `2` ou `pula` | PULA (desvia de empurrões) e cai com impacto (a cada 5s) |
+| Comenta `3` ou `segura` | SEGURA: fica 3x mais pesada por 3s (a cada 8s) |
+| Curte | Dash pequeno + enche a barra; 60 curtidas = SUPER EMPURRÃO automático |
+| Segue | Escudo 20s **só na primeira vez** (deixar de seguir e seguir de novo não vale; fica salvo) |
+| Compartilha | +20 na barra do super |
+| Presente (qualquer) | Onda de choque **proporcional ao valor** (1 💎 já é mais forte que like) + fica maior |
+| Presente 30+ 💎 | GIGANTE por 8 a 30s (quanto mais 💎, mais tempo) |
+| Presente 100+ 💎 | 3 a 12 METEOROS nos adversários (quanto mais 💎, mais meteoros) |
 | Presente 500+ 💎 | TERREMOTO: todo mundo é jogado para a borda |
 
 Com pouca gente, entram bolinhas "CPU" para completar 6 por rodada. Vitórias e derrubadas ficam no Hall da Fama.
