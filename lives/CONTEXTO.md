@@ -70,3 +70,13 @@ VPS (24h)
   e "conteúdo passivo ou sem ninguém (unattended)". Também cita batalhas de times só pedindo presente.
   Recomendação deles: rosto na câmera, falar com o chat, pausar a live quando sair.
   -> Live 24/7 sem ninguém = risco direto de perder os presentes (monetização), que é a renda do plano.
+
+## Jogo comprado "Arena Live" (bolinha) — análise do vídeo do vendedor (12/11/2026)
+- App web (TanStack Start + Vite), gerado com o App Builder do Grok (o AGENTS.md enviado é o modelo do Grok).
+- Usa tiktok-live-connector 2.5.0 + chave do Euler Stream (plano Comunidade/grátis), mesma base da nossa ponte.
+- Rota /api/live no servidor lê a live e manda eventos para a página por SSE.
+- Jogo: arena circular, cada espectador vira uma bolinha com a foto de perfil ("Aguardando jogadores", contagem 3-2-1).
+- Como roda no vídeo (Windows): $env:EULER_API_KEY="..."; npx vite dev --host 0.0.0.0 --port 8080 -> abre localhost:8080,
+  digita o @ (que já precisa estar AO VIVO) e clica em Conectar. Opção de deploy no Render grátis + APK no celular.
+- NÃO automatiza colocar a live no ar: alguém abre a live (LIVE Studio no Windows ou celular) e captura a janela do jogo.
+- Recebemos só arquivos de configuração; falta a pasta src/ para rodar.
