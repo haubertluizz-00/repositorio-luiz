@@ -639,7 +639,7 @@
   // ---------- Conexão com a ponte (eventos reais da live) ----------
   function conectarPonte() {
     if (!/^https?:$/.test(location.protocol)) return;
-    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?k=${encodeURIComponent(new URLSearchParams(location.search).get('k') || '')}`);
     ws.onmessage = m => { try { evento(JSON.parse(m.data)); } catch { /* ignora mensagem inválida */ } };
     ws.onopen = () => window.dispatchEvent(new CustomEvent('ponte', { detail: true }));
     ws.onclose = () => { window.dispatchEvent(new CustomEvent('ponte', { detail: false })); setTimeout(conectarPonte, 3000); };

@@ -493,7 +493,7 @@
 
   function conectarPonte() {
     if (!/^https?:$/.test(location.protocol)) return;
-    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?k=${encodeURIComponent(new URLSearchParams(location.search).get('k') || '')}`);
     ws.onopen = () => { ws.send(JSON.stringify({ tipo: 'pedir_dados', jogo: 'escalada' })); window.dispatchEvent(new CustomEvent('ponte', { detail: true })); };
     ws.onmessage = m => {
       let ev; try { ev = JSON.parse(m.data); } catch { return; }

@@ -54,7 +54,13 @@ const servidor = http.createServer((req, res) => {
   });
 });
 
-const wss = new WebSocketServer({ server: servidor, path: '/ws' });
+// Com a VPS aberta na internet, defina CHAVE_JOGO e abra o jogo com ?k=CHAVE_JOGO.
+// Sem a chave certa ninguém conecta no jogo (nem apaga os níveis salvos).
+const CHAVE_JOGO = process.env.CHAVE_JOGO || '';
+const wss = new WebSocketServer({
+  server: servidor, path: '/ws',
+  verifyClient: ({ req }) => !CHAVE_JOGO || new URL(req.url, 'http://x').searchParams.get('k') === CHAVE_JOGO,
+});
 function enviar(ev) {
   const msg = JSON.stringify(ev);
   for (const c of wss.clients) if (c.readyState === 1) c.send(msg);
