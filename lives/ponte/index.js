@@ -4,9 +4,11 @@
 // Uso:
 //   node index.js --usuario paisitottk          (conecta na live de verdade)
 //   node index.js                               (só serve o jogo, sem TikTok)
+//   node index.js --jogo guerra                 (escolhe o jogo; padrão: escalada)
 //
 // Variáveis opcionais:
 //   PORTA=8787
+//   JOGO=escalada
 //   EULER_API_KEY=...   chave do Euler Stream (assinatura); sem ela usa o plano grátis, que tem limite
 'use strict';
 
@@ -20,7 +22,9 @@ const arg = (nome, padrao) => { const i = args.indexOf('--' + nome); return i >=
 
 const PORTA = Number(process.env.PORTA || arg('porta', 8787));
 const USUARIO = (arg('usuario', process.env.TIKTOK_USUARIO || '') || '').replace(/^@/, '');
-const PASTA_JOGO = path.resolve(__dirname, '..', 'jogo');
+const JOGO = arg('jogo', process.env.JOGO || 'escalada');
+const PASTA_JOGOS = path.resolve(__dirname, '..', 'jogos');
+const PASTA_DADOS = path.resolve(__dirname, 'dados');
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.mp3': 'audio/mpeg' };
 
 const log = (...m) => console.log(new Date().toISOString().slice(11, 19), ...m);
@@ -39,9 +43,10 @@ const servidor = http.createServer((req, res) => {
     });
     return;
   }
-  let arquivo = path.normalize(path.join(PASTA_JOGO, decodeURIComponent(url.pathname)));
-  if (!arquivo.startsWith(PASTA_JOGO)) { res.writeHead(403); return res.end(); }
-  if (url.pathname === '/') arquivo = path.join(PASTA_JOGO, 'index.html');
+  if (url.pathname === '/') { res.writeHead(302, { Location: `/${JOGO}/${url.search}` }); return res.end(); }
+  let arquivo = path.normalize(path.join(PASTA_JOGOS, decodeURIComponent(url.pathname)));
+  if (!arquivo.startsWith(PASTA_JOGOS + path.sep)) { res.writeHead(403); return res.end(); }
+  if (url.pathname.endsWith('/')) arquivo = path.join(arquivo, 'index.html');
   fs.readFile(arquivo, (err, dados) => {
     if (err) { res.writeHead(404); return res.end('não encontrado'); }
     res.writeHead(200, { 'Content-Type': TIPOS[path.extname(arquivo)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
@@ -54,9 +59,29 @@ function enviar(ev) {
   const msg = JSON.stringify(ev);
   for (const c of wss.clients) if (c.readyState === 1) c.send(msg);
 }
-wss.on('connection', () => log('jogo conectado na ponte'));
+// Níveis e vitórias ficam salvos em ponte/dados/<jogo>.json
+const arquivoDados = jogo => /^[a-z]{1,20}$/.test(jogo || '') ? path.join(PASTA_DADOS, `${jogo}.json`) : null;
+wss.on('connection', cliente => {
+  log('jogo conectado na ponte');
+  cliente.on('message', bruto => {
+    let m; try { m = JSON.parse(bruto); } catch { return; }
+    const arq = arquivoDados(m.jogo);
+    if (!arq) return;
+    if (m.tipo === 'pedir_dados') {
+      fs.readFile(arq, 'utf8', (err, txt) => {
+        let dados = null; try { dados = err ? null : JSON.parse(txt); } catch { /* arquivo corrompido */ }
+        cliente.send(JSON.stringify({ tipo: 'dados', dados }));
+      });
+    } else if (m.tipo === 'salvar' && m.dados) {
+      const txt = JSON.stringify(m.dados);
+      if (txt.length > 5e6) return;
+      fs.mkdirSync(PASTA_DADOS, { recursive: true });
+      fs.writeFile(arq + '.tmp', txt, err => { if (!err) fs.rename(arq + '.tmp', arq, () => {}); });
+    }
+  });
+});
 
-servidor.listen(PORTA, () => log(`jogo em http://localhost:${PORTA}  (teste: http://localhost:${PORTA}/?sim=1)`));
+servidor.listen(PORTA, () => log(`jogo "${JOGO}" em http://localhost:${PORTA}  (teste: http://localhost:${PORTA}/?sim=1)`));
 
 // ---------- TikTok ----------
 if (!USUARIO) {
