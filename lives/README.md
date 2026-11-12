@@ -69,6 +69,22 @@ Teste rápido na VPS sem transmitir: `TESTE_ARQUIVO=teste.mp4 DURACAO=20 ./trans
 Mandar um evento de teste para o jogo:
 `curl -X POST localhost:8787/evento -d '{"tipo":"presente","id":"1","nome":"luiz","diamantes":100}'`
 
+
+## Medir o teste 24/7
+
+A ponte anota tudo que acontece na live em `ponte/dados/metricas.json` (por dia e por hora, horário de Brasília).
+Para ver o resumo na VPS:
+
+```bash
+cd /opt/repositorio-luiz/lives/ponte
+node relatorio.js              # um resumo por dia
+node relatorio.js 2026-11-15   # hora a hora de um dia
+```
+
+Mostra horas ao vivo, pico de espectadores, pessoas, comentários, likes, seguidores, doadores, diamantes,
+diamantes por hora e uma estimativa em dólar (1 💎 ≈ US$ 0,005, valor não oficial).
+Junto com isso, anote todo dia se chegou alguma restrição em **LIVE Center → Rules and guidance → Restrictions**.
+
 ## Pontos de atenção
 
 - **Chave de transmissão:** precisa ter acesso a transmitir pelo computador (RTMP). Em algumas contas a chave muda a cada live; se for o caso, é preciso atualizar `/etc/lives.env` e reiniciar `lives-transmitir`.

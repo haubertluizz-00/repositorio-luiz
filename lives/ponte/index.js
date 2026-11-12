@@ -102,6 +102,8 @@ function usuarioDe(d) {
 
 function conectarTikTok() {
   const { TikTokLiveConnection, WebcastEvent, ControlEvent } = require('tiktok-live-connector');
+  const metricas = require('./metricas');
+  const daLive = ev => { metricas.evento(ev); enviar(ev); };
   const opcoes = { enableExtendedGiftInfo: true };
   if (process.env.EULER_API_KEY) opcoes.signApiKey = process.env.EULER_API_KEY;
 
@@ -113,10 +115,11 @@ function conectarTikTok() {
     tentando = true;
     conexao = new TikTokLiveConnection(USUARIO, opcoes);
 
-    conexao.on(WebcastEvent.CHAT, d => enviar({ tipo: 'comentario', ...usuarioDe(d), texto: d.comment }));
-    conexao.on(WebcastEvent.LIKE, d => enviar({ tipo: 'like', ...usuarioDe(d), likes: d.likeCount || 1 }));
-    conexao.on(WebcastEvent.FOLLOW, d => enviar({ tipo: 'seguir', ...usuarioDe(d) }));
-    conexao.on(WebcastEvent.SHARE, d => enviar({ tipo: 'compartilhar', ...usuarioDe(d) }));
+    conexao.on(WebcastEvent.CHAT, d => daLive({ tipo: 'comentario', ...usuarioDe(d), texto: d.comment }));
+    conexao.on(WebcastEvent.LIKE, d => daLive({ tipo: 'like', ...usuarioDe(d), likes: d.likeCount || 1 }));
+    conexao.on(WebcastEvent.FOLLOW, d => daLive({ tipo: 'seguir', ...usuarioDe(d) }));
+    conexao.on(WebcastEvent.SHARE, d => daLive({ tipo: 'compartilhar', ...usuarioDe(d) }));
+    conexao.on(WebcastEvent.ROOM_USER, d => metricas.espectadores(d.viewerCount || 0));
     conexao.on(WebcastEvent.GIFT, d => {
       const det = d.giftDetails || {};
       const ext = d.extendedGiftInfo || {};
@@ -125,15 +128,16 @@ function conectarTikTok() {
       const diamantes = det.diamondCount || ext.diamond_count || 1;
       const ev = { tipo: 'presente', ...usuarioDe(d), presente: det.giftName || ext.name || 'presente', diamantes, qtd: d.repeatCount || 1 };
       log(`presente: ${ev.nome} → ${ev.presente} x${ev.qtd} (${diamantes}💎)`);
-      enviar(ev);
+      daLive(ev);
     });
-    conexao.on(WebcastEvent.STREAM_END, () => { log('live terminou'); religar(60); });
-    conexao.on(ControlEvent.DISCONNECTED, () => { log('desconectado do TikTok'); religar(20); });
+    conexao.on(WebcastEvent.STREAM_END, () => { log('live terminou'); metricas.setAoVivo(false); religar(60); });
+    conexao.on(ControlEvent.DISCONNECTED, () => { log('desconectado do TikTok'); metricas.setAoVivo(false); religar(20); });
     conexao.on(ControlEvent.ERROR, e => log('erro:', (e && (e.info || e.message)) || e));
 
     try {
       const estado = await conexao.connect();
       log(`conectado na live de @${USUARIO} (sala ${estado.roomId})`);
+      metricas.setAoVivo(true);
       tentando = false;
     } catch (e) {
       const offline = e && /offline/i.test(e.constructor?.name + ' ' + e.message);
