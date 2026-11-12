@@ -58,3 +58,15 @@ VPS (24h)
 - Testado aqui: jogo + simulador, ponte -> jogo via WebSocket, gravação de vídeo pelo pipeline Xvfb + Chromium + ffmpeg.
 - NÃO testado: conexão real com a live do TikTok (sessão na nuvem bloqueia o servidor de assinatura) e envio RTMP real.
 - Próximo: instalar na VPS, conseguir a chave de transmissão da Paisito, primeira live de teste.
+
+## Estudo: Livecade (livecade.io) — 12/11/2026
+- Plataforma pronta: 64 jogos interativos para TikTok LIVE (luta, corrida, quiz, palavras, battle royale).
+  Populares: MMA Clash, Blob Battle. De países: Nations Boat Race, Nations Derby, Guess the Flag, Guess the Location, Territory War.
+- Como funciona: você copia uma URL de "overlay" e adiciona no TikTok LIVE Studio / OBS / Streamlabs (ou pelo celular, modo "Mobile gaming").
+  Lê comentários/presentes/likes pelo @ público (conector não oficial, igual ao nosso). Não pede senha.
+- Preço: grátis (60 min de live/dia, só jogos grátis, marca d'água) / Pro US$ 12,99/mês (sem limite, todos os jogos, IA host).
+- PONTO CRÍTICO (doc deles, citando regras de monetização do TikTok): o TikTok pode DESMONETIZAR
+  "conteúdo gerado ou operado principalmente por sistemas automatizados ... sem presença significativa do criador"
+  e "conteúdo passivo ou sem ninguém (unattended)". Também cita batalhas de times só pedindo presente.
+  Recomendação deles: rosto na câmera, falar com o chat, pausar a live quando sair.
+  -> Live 24/7 sem ninguém = risco direto de perder os presentes (monetização), que é a renda do plano.
