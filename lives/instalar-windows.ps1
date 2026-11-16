@@ -18,7 +18,10 @@ if (-not $conta) { throw 'Precisa digitar o @ da conta.' }
 $node = Join-Path $base 'node'
 if (-not (Test-Path (Join-Path $node 'node.exe'))) {
   Passo 'Baixando o Node.js (1 a 3 minutos)...'
-  $lts = (Invoke-RestMethod 'https://nodejs.org/dist/index.json' | Where-Object { $_.lts } | Select-Object -First 1).version
+  # (no PowerShell 5.1 a lista precisa ir para uma variável antes, senão vem tudo junto)
+  $lts = $null
+  try { $lista = Invoke-RestMethod 'https://nodejs.org/dist/index.json'; $lts = ($lista | Where-Object { $_.lts } | Select-Object -First 1).version } catch { }
+  if (-not $lts -or $lts -isnot [string]) { $lts = 'v24.11.1' }
   $zip = Join-Path $base 'node.zip'
   Invoke-WebRequest "https://nodejs.org/dist/$lts/node-$lts-win-x64.zip" -OutFile $zip -UseBasicParsing
   Passo 'Descompactando o Node.js...'
