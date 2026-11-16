@@ -293,7 +293,7 @@ function mostrarFaixa(titulo, sub, cor = '#ffd34d') {
   clearTimeout(mostrarFaixa.t); mostrarFaixa.t = setTimeout(() => f.classList.remove('ver'), 3200);
 }
 function noFeed(txt, cor = '#fff') {
-  feedLista.unshift({ txt, cor }); if (feedLista.length > 5) feedLista.pop();
+  feedLista.unshift({ txt, cor }); if (feedLista.length > 2) feedLista.pop();
   const el = document.getElementById('feed'); el.textContent = '';
   for (const f of feedLista) {
     const d = document.createElement('div'), i = document.createElement('i');
@@ -375,11 +375,11 @@ function superEmpurrao(b) {
   noFeed(`${b.nome} soltou o SUPER EMPURRÃO (curtidas)`, '#ff9ad5');
 }
 
-// Presente: o poder cresce com o valor. Até o menor presente (1 💎) é mais forte que like e seguir.
+// Presente: o poder cresce com o valor. Até o menor presente (1 moeda) é mais forte que like e seguir.
 function presente(ev) {
   const d = Math.max(1, (ev.diamantes || 1) * (ev.qtd || 1));
   const b = entrar(ev); if (!b) return;
-  const nivel = Math.log2(1 + d);                 // 1💎=1 · 5💎=2,6 · 30💎=5 · 100💎=6,7 · 500💎=9 · 1000💎=10
+  const nivel = Math.log2(1 + d);                 // 1 moeda=1 · 5=2,6 · 30=5 · 100=6,7 · 500=9 · 1000=10
   b.poder += 2 * d;
   b.energia += Math.min(d * 5, CFG.LIKES_SUPER);
   let efeito = 'EMPURRÃO';
@@ -620,7 +620,7 @@ function atualizarVisual(dt) {
 }
 
 // ---------- HUD ----------
-const DICAS = ['💬 Comente para ENTRAR na arena', '💬 1 = EMPURRA  ·  2 = PULA  ·  3 = SEGURA', '❤️ Curtidas enchem a barra do SUPER EMPURRÃO', '🎁 Quanto MAIOR o presente, MAIOR o poder', '➕ Seguir = escudo (só na 1ª vez)', '🏆 Última bolinha em pé vence!'];
+const DICAS = ['💬 Comente para ENTRAR na arena', '💬 1 = EMPURRA  ·  2 = PULA  ·  3 = SEGURA', '❤️ Curtidas enchem a barra do SUPER EMPURRÃO', '➕ Seguir = escudo (só na 1ª vez)', '🏆 Última bolinha em pé vence!'];
 let tHud = 0;
 function atualizarHud(dt) {
   tHud -= dt; if (tHud > 0) return; tHud = 0.2;
@@ -640,6 +640,40 @@ function atualizarHud(dt) {
     a.textContent = p.nome.slice(0, 13); b.textContent = '🏆 ' + p.vitorias; d.append(a, b); fl.appendChild(d);
   }
 }
+
+// ---------- Tabela de presentes ----------
+// Cada faixa de valor (em moedas do TikTok) tem um efeito. Os nomes abaixo são o padrão;
+// com a live no ar, a ponte manda os presentes reais da sala e a tabela usa os nomes e as imagens deles.
+const FAIXAS = [
+  { min: 1, nome: 'Rosa', ico: '🌹', efeito: 'Empurrão' },
+  { min: 5, nome: 'Coração', ico: '💗', efeito: 'Onda de choque' },
+  { min: 30, nome: 'Rosquinha', ico: '🍩', efeito: 'Vira GIGANTE' },
+  { min: 100, nome: 'Confete', ico: '🎉', efeito: 'Meteoros' },
+  { min: 500, nome: 'Galáxia', ico: '🌌', efeito: 'TERREMOTO' },
+];
+function montarTabela() {
+  const el = document.getElementById('tabelaPresentes'); el.textContent = '';
+  for (const f of FAIXAS) {
+    const linha = document.createElement('div'); linha.className = 'presente';
+    const ico = document.createElement('div'); ico.className = 'ico';
+    if (f.img) { const img = document.createElement('img'); img.src = f.img; img.alt = ''; img.onerror = () => { ico.textContent = f.ico; }; ico.appendChild(img); }
+    else ico.textContent = f.ico;
+    const nome = document.createElement('div'); nome.className = 'nomeP'; nome.textContent = f.nome;
+    const ef = document.createElement('div'); ef.className = 'efeito'; ef.textContent = f.efeito;
+    linha.append(ico, nome, ef); el.appendChild(linha);
+  }
+}
+function usarCatalogo(lista) {
+  if (!Array.isArray(lista) || !lista.length) return;
+  const proximos = FAIXAS.map(f => f.min).concat(Infinity);
+  FAIXAS.forEach((f, i) => {
+    // o presente mais barato dentro da faixa (ex.: entre 30 e 99 moedas)
+    const c = lista.filter(p => p.moedas >= f.min && p.moedas < proximos[i + 1] && p.nome).sort((a, b) => a.moedas - b.moedas)[0];
+    if (c) { f.nome = c.nome; f.img = c.imagem ? urlFoto(c.imagem) : null; }
+  });
+  montarTabela();
+}
+montarTabela();
 
 // ---------- Salvar / carregar ----------
 let ws = null;
@@ -665,7 +699,12 @@ function conectarPonte() {
   const k = encodeURIComponent(new URLSearchParams(location.search).get('k') || '');
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?k=${k}`);
   ws.onopen = () => { ws.send(JSON.stringify({ tipo: 'pedir_dados', jogo: 'arena' })); window.dispatchEvent(new CustomEvent('ponte', { detail: true })); };
-  ws.onmessage = m => { let ev; try { ev = JSON.parse(m.data); } catch { return; } if (ev.tipo === 'dados') carregar(ev.dados); else evento(ev); };
+  ws.onmessage = m => {
+    let ev; try { ev = JSON.parse(m.data); } catch { return; }
+    if (ev.tipo === 'dados') carregar(ev.dados);
+    else if (ev.tipo === 'catalogo') usarCatalogo(ev.presentes);
+    else evento(ev);
+  };
   ws.onclose = () => { window.dispatchEvent(new CustomEvent('ponte', { detail: false })); setTimeout(conectarPonte, 3000); };
 }
 conectarPonte();

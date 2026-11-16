@@ -92,8 +92,10 @@ function enviar(ev) {
 }
 // Níveis e vitórias ficam salvos em ponte/dados/<jogo>.json
 const arquivoDados = jogo => /^[a-z]{1,20}$/.test(jogo || '') ? path.join(PASTA_DADOS, `${jogo}.json`) : null;
+let catalogo = null; // presentes reais da sala (nome, moedas, imagem), mandado para a tabela do jogo
 wss.on('connection', cliente => {
   log('jogo conectado na ponte');
+  if (catalogo) cliente.send(JSON.stringify({ tipo: 'catalogo', presentes: catalogo }));
   cliente.on('message', bruto => {
     let m; try { m = JSON.parse(bruto); } catch { return; }
     const arq = arquivoDados(m.jogo);
@@ -168,6 +170,10 @@ function conectarTikTok() {
     try {
       const estado = await conexao.connect();
       log(`conectado na live de @${USUARIO} (sala ${estado.roomId})`);
+      try {
+        catalogo = lerCatalogo(conexao.availableGifts);
+        if (catalogo.length) { log(`${catalogo.length} presentes da sala carregados para a tabela`); enviar({ tipo: 'catalogo', presentes: catalogo }); }
+      } catch (e) { log('não deu para ler a lista de presentes:', e.message); }
       metricas.setAoVivo(true);
       tentando = false;
     } catch (e) {
@@ -186,6 +192,17 @@ function conectarTikTok() {
   }
 
   tentar();
+}
+
+// Converte a lista de presentes da sala (formato muda entre versões) para { nome, moedas, imagem }
+function lerCatalogo(bruto) {
+  const lista = Array.isArray(bruto) ? bruto : (bruto && (bruto.gifts || (bruto.data && bruto.data.gifts))) || [];
+  const urls = img => img && ((img.url_list || img.urlList || img.url || [])[0] || (typeof img.url === 'string' ? img.url : null));
+  return lista.map(g => ({
+    nome: String(g.name || g.giftName || '').slice(0, 20),
+    moedas: Number(g.diamond_count ?? g.diamondCount ?? 0),
+    imagem: urls(g.image) || urls(g.icon) || null,
+  })).filter(g => g.nome && g.moedas > 0);
 }
 
 process.on('unhandledRejection', e => log('erro não tratado:', e && e.message));

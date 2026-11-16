@@ -56,15 +56,21 @@
   #vitoria .txt { font-size: 34px; font-weight: 900; font-style: italic; }
   #vitoria .info { font-size: 20px; color: #ddd; font-weight: 700; margin-top: 6px; }
 
-  #baixo { top: 1010px; display: grid; grid-template-columns: 1fr 236px; gap: 12px; padding: 0 22px; }
-  #feed div { font-size: 17px; font-weight: 700; margin-bottom: 6px; text-shadow: 0 1px 3px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #feed { position: absolute; left: 22px; right: 22px; top: 1004px; pointer-events: none; }
+  #feed div { font-size: 16px; font-weight: 700; margin-bottom: 4px; text-shadow: 0 1px 3px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #baixo { top: 1062px; display: grid; grid-template-columns: 1fr 200px; gap: 10px; padding: 0 18px; align-items: start; }
+  #presentes { background: var(--vidro); border: 1px solid rgba(255,61,240,.4); border-radius: 14px; padding: 8px 12px 6px; }
+  #presentes h3 { margin: 0 0 4px; font-size: 15px; color: var(--rosa); font-weight: 900; letter-spacing: .5px; }
+  .presente { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 8px; height: 34px; }
+  .presente .ico { width: 30px; height: 30px; display: grid; place-items: center; font-size: 24px; }
+  .presente .ico img { width: 30px; height: 30px; object-fit: contain; }
+  .presente .nomeP { font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .presente .efeito { font-size: 15px; font-weight: 900; color: var(--ouro); white-space: nowrap; text-align: right; }
   #feed i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; background: var(--c); box-shadow: 0 0 8px var(--c); }
   #fama { background: var(--vidro); border: 1px solid rgba(255,211,77,.35); border-radius: 14px; padding: 10px 12px; }
   #fama h3 { margin: 0 0 6px; font-size: 15px; color: var(--ouro); font-weight: 900; letter-spacing: .5px; }
   #fama div { display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; padding: 2px 0; }
   #fama div span:last-child { color: var(--ouro); }
-  #regras { position: absolute; left: 22px; right: 22px; top: 1196px; display: flex; gap: 8px; justify-content: center; }
-  #regras .chip { font-size: 15px; padding: 6px 10px; }
 
   /* simulador (?sim=1) */
   #sim { display: none; width: 300px; max-height: 96vh; overflow: auto; background: #151b33; color: #fff; border-radius: 12px; padding: 14px; box-sizing: border-box; font-size: 14px; }
@@ -100,14 +106,10 @@
         <div id="faixa"><div class="t"></div><div class="s"></div></div>
       </div>
       <div id="vitoria"><div class="quem"></div><div class="txt">VENCEU A ARENA!</div><div class="info"></div></div>
+      <div id="feed"></div>
       <div class="hud" id="baixo">
-        <div id="feed"></div>
+        <div id="presentes"><h3>🎁 O QUE CADA PRESENTE FAZ</h3><div id="tabelaPresentes"></div></div>
         <div id="fama"><h3>🏆 HALL DA FAMA</h3><div id="famaLista"><div><span>ninguém ainda…</span><span></span></div></div></div>
-      </div>
-      <div class="hud" id="regras">
-        <div class="chip">💬 1 empurra · 2 pula · 3 segura</div>
-        <div class="chip">❤️ super</div>
-        <div class="chip">🎁 + 💎 = + poder</div>
       </div>
     </div>
   </div>
@@ -122,11 +124,11 @@
       <button data-ev="like">❤️ Like x5</button>
       <button data-ev="seguir">➕ Seguir</button>
       <button data-ev="compartilhar">🔁 Compartilhar</button>
-      <button class="ouro" data-d="1">🎁 1 💎</button>
-      <button class="ouro" data-d="5">🎁 5 💎</button>
-      <button class="ouro" data-d="30">🎁 30 💎</button>
-      <button class="ouro" data-d="100">🎁 100 💎</button>
-      <button class="ouro" data-d="500">🎁 500 💎</button>
+      <button class="ouro" data-d="1">🎁 Rosa (1)</button>
+      <button class="ouro" data-d="5">🎁 5 moedas</button>
+      <button class="ouro" data-d="30">🎁 30 moedas</button>
+      <button class="ouro" data-d="100">🎁 100 moedas</button>
+      <button class="ouro" data-d="500">🎁 500 moedas</button>
       <button id="auto">▶ Auto-simular</button>
     </div>
     <div class="status" id="status">Ponte: desconectada</div>
