@@ -114,6 +114,15 @@ wss.on('connection', cliente => {
   });
 });
 
+servidor.on('error', e => {
+  if (e.code === 'EADDRINUSE') {
+    console.log(`\nO jogo JÁ ESTÁ LIGADO em outra janela (porta ${PORTA}). Abra http://localhost:${PORTA} no Chrome.`);
+    console.log('Para reiniciar, feche a outra janela preta e rode de novo.\n');
+    process.exit(1);
+  }
+  throw e;
+});
+wss.on('error', () => { /* tratado acima */ });
 servidor.listen(PORTA, () => log(`jogo "${JOGO}" em http://localhost:${PORTA}  (teste: http://localhost:${PORTA}/?sim=1)`));
 
 // ---------- TikTok ----------
