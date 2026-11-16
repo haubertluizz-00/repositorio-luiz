@@ -85,3 +85,10 @@ VPS (24h)
 - Usuário não aparece na câmera; vai testar 24/7 (risco de desmonetização assumido) numa conta secundária.
 - Sem chave RTMP e sem Mac compatível -> transmite pelo PC Windows dele com o TikTok LIVE Studio capturando o Chrome.
 - Jogo novo: lives/jogos/arena (three.js 0.186 local, bloom, fotos de perfil via /foto da ponte). Padrão da ponte.
+
+## Status (16/11/2026) — PC do irmão (Windows)
+- C: estava com 0 GB livres (causa de vários erros). Script lives/liberar-espaco.ps1 liberou 6,2 GB e mudou TEMP para D:\temp.
+- Instalado via lives/instalar-windows.ps1: Node portátil + jogo em D:\lives, atalho INICIAR-LIVE (abre janela "Arena das Bolinhas").
+- Usuário decidiu usar a conta PRINCIPAL @paisitottk (avisado do risco).
+- TikTok LIVE Studio instalado, modo "LIVE de jogos", layout Retrato. TikTok está verificando a idade (até 24h) antes de liberar a live pelo PC.
+- Próximo: montar cena (Captura de janela "Arena das Bolinhas", tirar câmera, mic mudo), título sem pedir presente, Iniciar LIVE, testar comentário "1" de outra conta.
