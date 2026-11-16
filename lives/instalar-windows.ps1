@@ -37,6 +37,7 @@ $env:Path = "$node;$env:Path"
 # 2) O jogo (baixa sempre a versão mais nova, mas guarda os níveis salvos)
 # se o jogo estiver ligado (janela preta aberta), desliga antes de atualizar
 Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$node*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-Process cmd -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like '*LIVE*' } | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 Passo 'Baixando o jogo...'
 $proj = Join-Path $base 'projeto'
@@ -48,8 +49,9 @@ Invoke-WebRequest 'https://github.com/haubertluizz-00/repositorio-luiz/archive/r
 $tmp = Join-Path $base 'projeto-tmp'
 if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
 Expand-Archive $zip $tmp -Force
-if (Test-Path $proj) { Remove-Item $proj -Recurse -Force }
-Move-Item (Get-ChildItem $tmp -Directory | Select-Object -First 1).FullName $proj
+$novo = (Get-ChildItem $tmp -Directory | Select-Object -First 1).FullName
+# copia por cima em vez de apagar a pasta (o Windows não deixa apagar pasta aberta em alguma janela)
+if (Test-Path $proj) { Copy-Item (Join-Path $novo '*') $proj -Recurse -Force } else { Move-Item $novo $proj }
 Remove-Item $tmp -Recurse -Force; Remove-Item $zip -Force
 if (Test-Path $backup) { Copy-Item $backup $dados -Recurse -Force }
 
