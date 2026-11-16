@@ -51,7 +51,7 @@ if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
 Expand-Archive $zip $tmp -Force
 $novo = (Get-ChildItem $tmp -Directory | Select-Object -First 1).FullName
 # copia por cima em vez de apagar a pasta (o Windows não deixa apagar pasta aberta em alguma janela)
-if (Test-Path $proj) { Copy-Item (Join-Path $novo '*') $proj -Recurse -Force } else { Move-Item $novo $proj }
+if (Test-Path $proj) { robocopy $novo $proj /E /NFL /NDL /NJH /NJS /NP | Out-Null; if ($LASTEXITCODE -ge 8) { throw 'Falha ao copiar a versao nova do jogo.' } } else { Move-Item $novo $proj }
 Remove-Item $tmp -Recurse -Force; Remove-Item $zip -Force
 if (Test-Path $backup) { Copy-Item $backup $dados -Recurse -Force }
 
