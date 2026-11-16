@@ -33,7 +33,9 @@ const CORES = ['#ff3df0', '#36e4ff', '#ffd34d', '#7cff6b', '#ff7a3d', '#a07bff',
 
 // ---------- Renderização ----------
 const palco = document.getElementById('palco');
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+const Q = new URLSearchParams(location.search);
+let leve = Q.has('leve');                 // ?leve=1 força o modo leve; ?alta=1 nunca troca sozinho
+const renderer = new THREE.WebGLRenderer({ antialias: !leve, powerPreference: 'high-performance' });
 renderer.setPixelRatio(1);
 renderer.setSize(W, H);
 renderer.shadowMap.enabled = true;
@@ -674,15 +676,38 @@ const MANUAL = new URLSearchParams(location.search).has('manual'); // gravação
 function passo(dt) {
   agora += dt;
   atualizarRodada(dt);
-  fisica(dt / 2); fisica(dt / 2);
+  // física em passos pequenos: mesmo com o PC lento o jogo não fica em câmera lenta
+  const n = Math.ceil(dt / 0.02);
+  for (let i = 0; i < n; i++) fisica(dt / n);
   atualizarVisual(dt);
   atualizarHud(dt);
-  composer.render();
+  if (leve) renderer.render(cena, camera); else composer.render();
   rotulos.render(cena, camera);
 }
+// ---------- Modo leve automático ----------
+// Se o PC não aguentar (menos de ~40 quadros por segundo), desliga brilho e sombras e baixa a resolução.
+let amostra = 0, tempoAmostra = 0, nivelLeve = leve ? 1 : 0;
+function aplicarLeve(nivel) {
+  nivelLeve = nivel; leve = true;
+  renderer.shadowMap.enabled = false; sol.castShadow = false;
+  cena.traverse(o => { if (o.material) [].concat(o.material).forEach(m => { m.needsUpdate = true; }); });
+  renderer.setPixelRatio(nivel >= 2 ? 0.6 : 0.8);
+  console.info('[arena] modo leve', nivel);
+}
+if (leve) aplicarLeve(1);
+function medirDesempenho(dt) {
+  if (Q.has('alta') || MANUAL || nivelLeve >= 2) return;
+  amostra++; tempoAmostra += dt;
+  if (tempoAmostra < 4) return;
+  const fps = amostra / tempoAmostra; amostra = 0; tempoAmostra = 0;
+  if (fps < 40) aplicarLeve(nivelLeve + 1);
+}
+
 function quadro() {
   relogio.update();
-  passo(Math.min(0.05, relogio.getDelta()));
+  const dt = Math.min(0.1, relogio.getDelta());
+  medirDesempenho(dt);
+  passo(dt);
   requestAnimationFrame(quadro);
 }
 completarCpu();
