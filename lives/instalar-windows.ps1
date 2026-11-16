@@ -70,7 +70,16 @@ $bat = Join-Path $base 'INICIAR-LIVE.bat'
 title LIVE - NAO FECHE ESTA JANELA
 set PATH=$node;%PATH%
 cd /d "$proj\lives\ponte"
-start "" "http://localhost:8787"
+set "CHROME="
+if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "CHROME=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
+if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "CHROME=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
+if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" set "CHROME=%LocalAppData%\Google\Chrome\Application\chrome.exe"
+rem abre o jogo numa janela propria, em pe, que nao pausa quando fica atras de outra janela
+if defined CHROME (
+  start "" cmd /c "timeout /t 3 >nul & start "" "%CHROME%" --app=http://localhost:8787 --no-first-run --no-default-browser-check --window-size=608,1080 --window-position=0,0 --user-data-dir="$base\chrome-live" --disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required"
+) else (
+  start "" cmd /c "timeout /t 3 >nul & start "" http://localhost:8787"
+)
 echo.
 echo  Jogo ligado. Deixe esta janela aberta enquanto a live estiver no ar.
 echo  O jogo conecta sozinho na live de @$conta quando ela entrar no ar.
