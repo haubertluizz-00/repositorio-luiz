@@ -37,7 +37,7 @@ $env:Path = "$node;$env:Path"
 # 2) O jogo (baixa sempre a versão mais nova, mas guarda os níveis salvos)
 # se o jogo estiver ligado (janela preta aberta), desliga antes de atualizar
 Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$node*" } | Stop-Process -Force -ErrorAction SilentlyContinue
-Get-Process cmd -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like '*LIVE*' } | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-Process cmd -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like '*NAO FECHE*' } | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 Passo 'Baixando o jogo...'
 $proj = Join-Path $base 'projeto'
