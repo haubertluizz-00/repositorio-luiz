@@ -92,3 +92,12 @@ VPS (24h)
 - Usuário decidiu usar a conta PRINCIPAL @paisitottk (avisado do risco).
 - TikTok LIVE Studio instalado, modo "LIVE de jogos", layout Retrato. TikTok está verificando a idade (até 24h) antes de liberar a live pelo PC.
 - Próximo: montar cena (Captura de janela "Arena das Bolinhas", tirar câmera, mic mudo), título sem pedir presente, Iniciar LIVE, testar comentário "1" de outra conta.
+
+## Novo formato (17/11/2026): "A LAJE DO TIO JUCA" (vídeo realista com IA)
+- Ideia do usuário inspirada em lives com personagem realista (Higgsfield) onde cada presente traz algo para a cena.
+- Tio Juca: tiozão carioca rubro-negro (camisa listrada SEM escudo do Flamengo), laje no RJ com Cristo ao fundo, falas engraçadas com "PIII" por cima de palavrão.
+- Presentes: galinha (1) → balde da vizinha (5) → piscina (30) → helicóptero da TV (100) → onça (500) → disco voador (1000).
+- Tocador pronto em lives/jogos/laje (loop disfarçado: trechos aleatórios, zoom/câmera variados, luz pelo horário do Rio, pombos;
+  presente corta para o vídeo dele com nome de quem mandou; fila; patrões do dia; tabela de presentes). Vídeos de TESTE em jogos/laje/clipes.
+- Para os vídeos reais: Higgsfield está com 0 créditos (plano grátis) e o ElevenLabs precisa ser reconectado (voz). Modelo para fala: Higgsfield "Intone" (lip-sync).
+- Atalho INICIAR-LAJE criado pelo instalador (ponte com --jogo laje).

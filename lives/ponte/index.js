@@ -25,7 +25,7 @@ const USUARIO = (arg('usuario', process.env.TIKTOK_USUARIO || '') || '').replace
 const JOGO = arg('jogo', process.env.JOGO || 'arena');
 const PASTA_JOGOS = path.resolve(__dirname, '..', 'jogos');
 const PASTA_DADOS = path.resolve(__dirname, 'dados');
-const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.mp3': 'audio/mpeg' };
+const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.mp4': 'video/mp4', '.webm': 'video/webm' };
 
 const log = (...m) => console.log(new Date().toISOString().slice(11, 19), ...m);
 
@@ -49,10 +49,21 @@ const servidor = http.createServer((req, res) => {
   let arquivo = path.normalize(path.join(PASTA_JOGOS, decodeURIComponent(url.pathname)));
   if (!arquivo.startsWith(PASTA_JOGOS + path.sep)) { res.writeHead(403); return res.end(); }
   if (url.pathname.endsWith('/')) arquivo = path.join(arquivo, 'index.html');
-  fs.readFile(arquivo, (err, dados) => {
-    if (err) { res.writeHead(404); return res.end('não encontrado'); }
-    res.writeHead(200, { 'Content-Type': TIPOS[path.extname(arquivo)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
-    res.end(dados);
+  fs.stat(arquivo, (err, st) => {
+    if (err || !st.isFile()) { res.writeHead(404); return res.end('não encontrado'); }
+    const tipo = TIPOS[path.extname(arquivo)] || 'application/octet-stream';
+    const faixa = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (faixa && /^video|^audio/.test(tipo)) {
+      // vídeo em pedaços: deixa o navegador pular para qualquer ponto do vídeo
+      let ini = faixa[1] ? Number(faixa[1]) : st.size - Number(faixa[2]);
+      let fim = faixa[1] && faixa[2] ? Number(faixa[2]) : st.size - 1;
+      if (isNaN(ini) || ini < 0 || ini >= st.size || fim < ini) { res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); return res.end(); }
+      fim = Math.min(fim, st.size - 1);
+      res.writeHead(206, { 'Content-Type': tipo, 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${ini}-${fim}/${st.size}`, 'Content-Length': fim - ini + 1, 'Cache-Control': 'no-store' });
+      return fs.createReadStream(arquivo, { start: ini, end: fim }).pipe(res);
+    }
+    res.writeHead(200, { 'Content-Type': tipo, 'Content-Length': st.size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' });
+    fs.createReadStream(arquivo).pipe(res);
   });
 });
 

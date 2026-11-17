@@ -1,0 +1,24 @@
+// A LAJE DO TIO JUCA — lista de vídeos e de presentes.
+// Para trocar um vídeo de teste pelo vídeo de verdade, coloque o arquivo novo em clipes/ com o MESMO nome
+// (ou mude o nome aqui). Pode ter quantos vídeos "parados" e "falas" quiser: quanto mais, menos parece loop.
+window.LAJE = {
+  titulo: 'A LAJE DO TIO JUCA',
+
+  // Vídeos do tio parado na laje (sem falar ou só resmungando). O tocador sorteia trechos deles.
+  parados: ['parado1.mp4', 'parado2.mp4', 'parado3.mp4'],
+
+  // Falas soltas ("comenta aí, caramba!"). Tocam inteiras, de vez em quando, entre os trechos parados.
+  falas: ['fala1.mp4', 'fala2.mp4'],
+  falaACada: [35, 70],          // segundos entre uma fala e outra (sorteado entre os dois números)
+
+  // Presentes: 'min' é o valor mínimo em moedas do TikTok. Nome e ícone são trocados sozinhos
+  // pelos presentes reais da sala quando a live está no ar.
+  presentes: [
+    { min: 1,    nome: 'Rosa',      ico: '🌹', evento: 'Galinha na laje',   arquivo: 'galinha.mp4' },
+    { min: 5,    nome: 'Coração',   ico: '💗', evento: 'Balde da vizinha',  arquivo: 'balde.mp4' },
+    { min: 30,   nome: 'Rosquinha', ico: '🍩', evento: 'Piscina na laje',   arquivo: 'piscina.mp4' },
+    { min: 100,  nome: 'Confete',   ico: '🎉', evento: 'Helicóptero da TV', arquivo: 'helicoptero.mp4' },
+    { min: 500,  nome: 'Leão',      ico: '🦁', evento: 'Onça na laje',      arquivo: 'onca.mp4' },
+    { min: 1000, nome: 'Galáxia',   ico: '🌌', evento: 'Disco voador',      arquivo: 'disco.mp4' },
+  ],
+};

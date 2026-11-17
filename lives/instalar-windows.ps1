@@ -62,12 +62,12 @@ Push-Location (Join-Path $proj 'lives\ponte')
 if ($LASTEXITCODE -ne 0) { Pop-Location; throw 'O npm install falhou. Mande um print desta tela.' }
 Pop-Location
 
-# 4) Atalho para ligar a live
-Passo 'Criando o atalho INICIAR-LIVE...'
-$bat = Join-Path $base 'INICIAR-LIVE.bat'
-@"
+# 4) Atalhos para ligar a live: INICIAR-LIVE (Arena) e INICIAR-LAJE (A Laje do Tio Juca)
+function CriarAtalho($nomeArq, $jogo, $titulo) {
+  $bat = Join-Path $base $nomeArq
+  @"
 @echo off
-title LIVE - NAO FECHE ESTA JANELA
+title $titulo - NAO FECHE ESTA JANELA
 set PATH=$node;%PATH%
 cd /d "$proj\lives\ponte"
 set "CHROME="
@@ -76,22 +76,27 @@ if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "CHROME=
 if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" set "CHROME=%LocalAppData%\Google\Chrome\Application\chrome.exe"
 rem abre o jogo numa janela propria, em pe, que nao pausa quando fica atras de outra janela
 if defined CHROME (
-  start "" cmd /c "timeout /t 3 >nul & start "" "%CHROME%" --app=http://localhost:8787 --no-first-run --no-default-browser-check --window-size=608,1080 --window-position=0,0 --user-data-dir="$base\chrome-live" --disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required"
+  start "" cmd /c "timeout /t 3 >nul & start "" "%CHROME%" --app=http://localhost:8787/$jogo/ --no-first-run --no-default-browser-check --window-size=608,1080 --window-position=0,0 --user-data-dir="$base\chrome-live" --disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required"
 ) else (
-  start "" cmd /c "timeout /t 3 >nul & start "" http://localhost:8787"
+  start "" cmd /c "timeout /t 3 >nul & start "" http://localhost:8787/$jogo/"
 )
 echo.
-echo  Jogo ligado. Deixe esta janela aberta enquanto a live estiver no ar.
+echo  $titulo ligado. Deixe esta janela aberta enquanto a live estiver no ar.
 echo  O jogo conecta sozinho na live de @$conta quando ela entrar no ar.
 echo.
-node index.js --usuario $conta
+node index.js --usuario $conta --jogo $jogo
 pause
 "@ | Set-Content -Path $bat -Encoding ASCII
-try { Copy-Item $bat (Join-Path ([Environment]::GetFolderPath('Desktop')) 'INICIAR-LIVE.bat') -Force } catch { Write-Host "Nao deu para criar o atalho na Area de Trabalho; use $bat" -ForegroundColor Yellow }
+  try { Copy-Item $bat (Join-Path ([Environment]::GetFolderPath('Desktop')) $nomeArq) -Force } catch { Write-Host "Nao deu para criar o atalho na Area de Trabalho; use $bat" -ForegroundColor Yellow }
+  return $bat
+}
+Passo 'Criando os atalhos INICIAR-LIVE e INICIAR-LAJE...'
+$bat = CriarAtalho 'INICIAR-LIVE.bat' 'arena' 'ARENA'
+$null = CriarAtalho 'INICIAR-LAJE.bat' 'laje' 'LAJE DO TIO JUCA'
 
 # 5) Não deixar o PC dormir na tomada
 try { powercfg /change standby-timeout-ac 0; powercfg /change hibernate-timeout-ac 0 } catch { }
 
 Passo 'PRONTO! Abrindo o jogo...'
-Write-Host "Da proxima vez, so clique duas vezes em INICIAR-LIVE na Area de Trabalho." -ForegroundColor Green
+Write-Host "Da proxima vez: INICIAR-LIVE (Arena) ou INICIAR-LAJE (Tio Juca) na Area de Trabalho." -ForegroundColor Green
 Start-Process $bat

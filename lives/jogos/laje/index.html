@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="pt-BR" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Laje do Tio Juca</title>
+<style>
+  :root { --verm: #e3001b; --preto: #0d0d0d; --ouro: #ffd34d; --vidro: rgba(8, 8, 12, .62); --borda: rgba(255,255,255,.14); }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
+  #fora { display: flex; height: 100%; align-items: center; justify-content: center; gap: 16px; }
+  #caixa { position: relative; }
+  #palco { position: absolute; left: 0; top: 0; width: 720px; height: 1280px; transform-origin: 0 0; overflow: hidden; background: #000; color: #fff; }
+
+  /* vídeos: dois por cima um do outro para trocar com fade */
+  .cam { position: absolute; inset: 0; overflow: hidden; opacity: 0; transition: opacity .7s ease; }
+  .cam.ativa { opacity: 1; }
+  .cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 50% 50%; will-change: transform; }
+  #luz { position: absolute; inset: 0; pointer-events: none; transition: background 4s, opacity 4s; mix-blend-mode: multiply; }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  #flash.on { opacity: .85; transition: none; }
+  #ambiente { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .pombo { position: absolute; font-size: 34px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
+
+  /* topo */
+  #topo { position: absolute; top: 124px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+  #titulo { font-size: 42px; font-weight: 900; letter-spacing: 1px; padding: 6px 18px; transform: rotate(-2deg);
+            background: repeating-linear-gradient(90deg, var(--verm) 0 28px, var(--preto) 28px 56px); border: 4px solid #fff;
+            box-shadow: 0 6px 0 rgba(0,0,0,.45); text-shadow: 0 3px 0 #000; }
+  #subtitulo { display: flex; gap: 8px; }
+  .chip { background: var(--vidro); border: 1px solid var(--borda); border-radius: 999px; padding: 6px 14px; font-size: 18px; font-weight: 800; backdrop-filter: blur(4px); }
+  .chip .vivo { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--verm); margin-right: 6px; animation: piscar 1.2s infinite; }
+  @keyframes piscar { 50% { opacity: .2; } }
+  #dica { margin-top: 4px; }
+
+  /* comentário da vez (o tio "lendo") */
+  #comentario { position: absolute; left: 30px; right: 30px; top: 330px; display: flex; gap: 12px; align-items: center; padding: 12px 16px;
+                background: #fff; color: #111; border-radius: 18px; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+                transform: translateY(-20px) scale(.96); opacity: 0; transition: all .35s; pointer-events: none; }
+  #comentario.ver { transform: none; opacity: 1; }
+  #comentario::after { content: ""; position: absolute; bottom: -14px; left: 70px; border: 14px solid transparent; border-top-color: #fff; border-bottom: 0; }
+  #comentario img, .avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; background: #ccc; flex: none; }
+  #comentario .quem { font-weight: 900; font-size: 18px; color: var(--verm); }
+  #comentario .txt { font-weight: 700; font-size: 22px; line-height: 1.15; }
+
+  /* faixa de presente */
+  #evento { position: absolute; left: 0; right: 0; top: 760px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+            transform: scale(.6); opacity: 0; transition: all .3s cubic-bezier(.2,1.6,.4,1); pointer-events: none; }
+  #evento.ver { transform: none; opacity: 1; }
+  #evento .linha1 { display: flex; align-items: center; gap: 12px; background: var(--verm); border: 4px solid #fff; border-radius: 16px; padding: 8px 18px 8px 8px; box-shadow: 0 6px 0 rgba(0,0,0,.45); }
+  #evento .nome { font-size: 34px; font-weight: 900; text-shadow: 0 2px 0 #000; max-width: 470px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #evento .linha2 { font-size: 26px; font-weight: 900; background: #000; padding: 6px 16px; border-radius: 10px; color: var(--ouro); }
+  #fila { position: absolute; right: 18px; top: 440px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; }
+  #fila div { background: var(--vidro); border-radius: 10px; padding: 4px 10px; font-size: 15px; font-weight: 800; }
+
+  /* curtidas */
+  #coracoes { position: absolute; right: 10px; bottom: 300px; width: 90px; height: 500px; pointer-events: none; }
+  .cor { position: absolute; bottom: 0; font-size: 30px; animation: subir 2.4s ease-out forwards; }
+  @keyframes subir { to { transform: translate(var(--dx), -480px) scale(.6); opacity: 0; } }
+
+  /* rodapé */
+  #baixo { position: absolute; top: 1010px; left: 18px; right: 18px; display: grid; grid-template-columns: 1fr 210px; gap: 10px; align-items: start; pointer-events: none; }
+  .painel { background: var(--vidro); border: 1px solid var(--borda); border-radius: 14px; padding: 8px 12px 6px; backdrop-filter: blur(4px); }
+  .painel h3 { margin: 0 0 4px; font-size: 15px; font-weight: 900; letter-spacing: .5px; }
+  #presentes h3 { color: #ff6b7d; }
+  .presente { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; height: 37px; }
+  .presente .ico { width: 28px; height: 28px; display: grid; place-items: center; font-size: 22px; }
+  .presente .ico img { width: 28px; height: 28px; object-fit: contain; }
+  .presente .n { font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .presente .e { font-size: 14px; font-weight: 900; color: var(--ouro); white-space: nowrap; }
+  #patroes h3 { color: var(--ouro); }
+  #patroes .p { display: flex; justify-content: space-between; gap: 6px; font-size: 15px; font-weight: 700; padding: 2px 0; }
+  #patroes .p span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #ia { position: absolute; left: 18px; bottom: 6px; font-size: 12px; color: rgba(255,255,255,.55); pointer-events: none; }
+  #som { position: absolute; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.6); font-size: 32px; font-weight: 900; cursor: pointer; }
+
+  /* simulador (?sim=1) */
+  #sim { display: none; width: 300px; max-height: 96vh; overflow: auto; background: #1d1d24; color: #fff; border-radius: 12px; padding: 14px; box-sizing: border-box; font-size: 14px; }
+  body.sim #sim { display: block; }
+  #sim h2 { margin: 0 0 8px; font-size: 16px; }
+  #sim label { display: block; margin: 8px 0 4px; color: #aab; }
+  #sim input { width: 100%; padding: 8px; border-radius: 8px; border: 0; box-sizing: border-box; }
+  #sim .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+  #sim button { padding: 9px 6px; border: 0; border-radius: 8px; background: #3a3a48; color: #fff; font-weight: 700; cursor: pointer; }
+  #sim button.ouro { background: #8a1020; }
+  #sim .status { margin-top: 10px; color: #aab; font-size: 12px; }
+  @media (max-width: 760px) { #fora { flex-direction: column; } #sim { width: 100%; max-height: 38vh; } }
+</style>
+</head>
+<body>
+<div id="fora">
+  <div id="caixa">
+    <div id="palco">
+      <div class="cam" id="camA"><video id="vA" playsinline preload="auto"></video></div>
+      <div class="cam" id="camB"><video id="vB" playsinline preload="auto"></video></div>
+      <div id="luz"></div>
+      <div id="ambiente"></div>
+      <div id="flash"></div>
+
+      <div id="topo">
+        <div id="titulo">A LAJE DO TIO JUCA</div>
+        <div id="subtitulo">
+          <div class="chip"><span class="vivo"></span><span id="relogio">Rio de Janeiro</span></div>
+          <div class="chip" id="chipCurtidas">❤️ <b id="curtidas">0</b></div>
+        </div>
+        <div class="chip" id="dica">💬 Comenta aí que o Tio Juca lê!</div>
+      </div>
+
+      <div id="comentario"><img alt=""><div><div class="quem"></div><div class="txt"></div></div></div>
+      <div id="fila"></div>
+      <div id="evento"><div class="linha1"><img class="avatar" alt=""><div class="nome"></div></div><div class="linha2"></div></div>
+      <div id="coracoes"></div>
+
+      <div id="baixo">
+        <div class="painel" id="presentes"><h3>🎁 MANDA QUE APARECE NA LAJE</h3><div id="tabela"></div></div>
+        <div class="painel" id="patroes"><h3>👑 PATRÕES DA LAJE</h3><div id="lista"></div></div>
+      </div>
+      <div id="ia">Personagem e cenário criados com IA</div>
+      <div id="som">🔇 Clique para ativar o som</div>
+    </div>
+  </div>
+  <div id="sim">
+    <h2>Simulador da live</h2>
+    <label for="nome">Nome de quem interage</label>
+    <input id="nome" value="luiz">
+    <label for="texto">Comentário</label>
+    <input id="texto" value="salve tio juca!!">
+    <div class="botoes">
+      <button data-ev="comentario">💬 Comentar</button>
+      <button data-ev="like">❤️ Like x10</button>
+      <button data-ev="seguir">➕ Seguir</button>
+      <button data-ev="compartilhar">🔁 Compartilhar</button>
+      <button class="ouro" data-d="1">🐔 1 moeda</button>
+      <button class="ouro" data-d="5">🪣 5 moedas</button>
+      <button class="ouro" data-d="30">🏊 30 moedas</button>
+      <button class="ouro" data-d="100">🚁 100 moedas</button>
+      <button class="ouro" data-d="500">🐆 500 moedas</button>
+      <button class="ouro" data-d="1000">🛸 1000 moedas</button>
+      <button id="auto">▶ Auto-simular</button>
+    </div>
+    <div class="status" id="status">Ponte: desconectada</div>
+  </div>
+</div>
+<script src="config.js"></script>
+<script src="laje.js"></script>
+<script>
+  // Simulador (?sim=1) e ?auto=1
+  (() => {
+    const q = new URLSearchParams(location.search);
+    if (q.has('sim')) document.body.classList.add('sim');
+    const $ = id => document.getElementById(id);
+    const base = () => ({ id: $('nome').value.trim() || 'teste', nome: $('nome').value.trim() || 'teste' });
+    document.querySelectorAll('#sim [data-ev]').forEach(b => b.onclick = () => {
+      const ev = { ...base(), tipo: b.dataset.ev };
+      if (ev.tipo === 'comentario') ev.texto = $('texto').value;
+      if (ev.tipo === 'like') ev.likes = 10;
+      laje.evento(ev);
+    });
+    document.querySelectorAll('#sim [data-d]').forEach(b => b.onclick = () =>
+      laje.evento({ ...base(), tipo: 'presente', presente: 'Presente', diamantes: +b.dataset.d, qtd: 1 }));
+    const nomes = ['ana', 'joao', 'pedro', 'maria', 'lucas', 'bia', 'gabi', 'davi', 'leo', 'duda', 'rafa', 'nina'];
+    const falas = ['salve tio juca', 'MENGÃO', 'kkkkkkk', 'manda a galinha', 'cadê a picanha tio', 'boa noite laje', 'tio me adota', 'oi tio'];
+    let t = null;
+    function passo() {
+      const n = nomes[Math.floor(Math.random() * nomes.length)], r = Math.random(), ev = { id: n, nome: n };
+      if (r < 0.45) laje.evento({ ...ev, tipo: 'comentario', texto: falas[Math.floor(Math.random() * falas.length)] });
+      else if (r < 0.9) laje.evento({ ...ev, tipo: 'like', likes: 1 + Math.floor(Math.random() * 15) });
+      else if (r < 0.93) laje.evento({ ...ev, tipo: 'seguir' });
+      else laje.evento({ ...ev, tipo: 'presente', presente: 'Presente', diamantes: [1, 1, 1, 5, 5, 30, 100][Math.floor(Math.random() * 7)], qtd: 1 });
+    }
+    window.autoSimular = (ligar, ms = 900) => { clearInterval(t); t = null; if (ligar) t = setInterval(passo, ms); $('auto').textContent = t ? '⏸ Parar auto' : '▶ Auto-simular'; };
+    $('auto').onclick = () => window.autoSimular(!t);
+    if (q.has('auto')) window.autoSimular(true);
+    addEventListener('ponte', e => { $('status').textContent = e.detail ? 'Ponte: conectada (eventos reais da live)' : 'Ponte: desconectada'; });
+    function encaixar() {
+      const lado = document.body.classList.contains('sim') && innerWidth > 760 ? 330 : 0;
+      const alt = document.body.classList.contains('sim') && innerWidth <= 760 ? innerHeight * 0.6 : innerHeight;
+      const k = Math.min(alt / 1280, (innerWidth - lado) / 720);
+      $('palco').style.transform = `scale(${k})`;
+      $('caixa').style.width = 720 * k + 'px'; $('caixa').style.height = 1280 * k + 'px';
+    }
+    addEventListener('resize', encaixar); encaixar();
+  })();
+</script>
+</body>
+</html>
