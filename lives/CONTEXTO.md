@@ -101,3 +101,5 @@ VPS (24h)
   presente corta para o vídeo dele com nome de quem mandou; fila; patrões do dia; tabela de presentes). Vídeos de TESTE em jogos/laje/clipes.
 - Para os vídeos reais: Higgsfield está com 0 créditos (plano grátis) e o ElevenLabs precisa ser reconectado (voz). Modelo para fala: Higgsfield "Intone" (lip-sync).
 - Atalho INICIAR-LAJE criado pelo instalador (ponte com --jogo laje).
+- Voz do Tio Juca salva no ElevenLabs: nome "Tio Juca", voice_id DFSIymlMNpXmTRzLbJ9N (opção 2 de 3, escolhida pelo usuário).
+- Higgsfield conectado, mas com 0 créditos (plano grátis): usuário precisa assinar um plano para gerar os vídeos.
