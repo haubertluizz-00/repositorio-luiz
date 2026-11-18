@@ -108,6 +108,26 @@ Mandar um evento de teste para o jogo:
 `curl -X POST localhost:8787/evento -d '{"tipo":"presente","id":"1","nome":"luiz","diamantes":100}'`
 
 
+
+## Tio Juca com IA (respostas aos comentários)
+
+A ponte (`ponte/tio.js`) lê os comentários e, a cada 25 s, responde um deles no jeito do Tio Juca usando a API do Claude.
+Também agradece presentes, seguidores, compartilhamentos e curtidas em grupo (sem IA, de graça).
+A fala aparece na Laje num balão "🎙️ TIO JUCA — respondendo Fulano"; com chave do ElevenLabs, sai também com a voz dele.
+
+Chaves no arquivo `D:\lives\chaves.env` (o instalador cria; tire o `#` e cole a chave):
+
+| Linha | Para quê |
+|---|---|
+| `ANTHROPIC_API_KEY=...` | Liga as respostas com IA (console.anthropic.com → API Keys) |
+| `TIO_MODELO=claude-haiku-5-5` | Troca o modelo. Padrão: `claude-opus-5-5` (melhor, mais caro). Haiku 5.5 sai ~40x mais barato |
+| `TIO_LIMITE_DIA_USD=1` | Gasto máximo por dia com a IA; passou, o tio só agradece |
+| `TIO_A_CADA=25` | Segundos entre respostas |
+| `ELEVENLABS_API_KEY=...` | Voz do tio (precisa de plano pago no ElevenLabs) |
+
+Filtros: comentários e respostas com ofensas, política, conteúdo sexual etc. são ignorados; palavrão na tela aparece censurado (p****) e na voz vira "piiii".
+Com Opus/Sonnet 5.5 a ponte liga o *fallback* do servidor (`fallbacks: "default"`): se o modelo recusar, outro responde.
+
 ## Medir o teste 24/7
 
 A ponte anota tudo que acontece na live em `ponte/dados/metricas.json` (por dia e por hora, horário de Brasília).

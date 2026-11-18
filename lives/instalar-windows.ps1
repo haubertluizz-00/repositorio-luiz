@@ -62,6 +62,19 @@ Push-Location (Join-Path $proj 'lives\ponte')
 if ($LASTEXITCODE -ne 0) { Pop-Location; throw 'O npm install falhou. Mande um print desta tela.' }
 Pop-Location
 
+# 3b) Arquivo de chaves (opcional): IA do Tio Juca e voz
+$chaves = Join-Path $base 'chaves.env'
+if (-not (Test-Path $chaves)) {
+@"
+# Chaves opcionais da live. Tire o # do comeco da linha e cole a chave depois do =
+# ANTHROPIC_API_KEY=
+# TIO_MODELO=claude-haiku-5-5
+# TIO_LIMITE_DIA_USD=1
+# ELEVENLABS_API_KEY=
+# EULER_API_KEY=
+"@ | Set-Content -Path $chaves -Encoding ASCII
+}
+
 # 4) Atalhos para ligar a live: INICIAR-LIVE (Arena) e INICIAR-LAJE (A Laje do Tio Juca)
 function CriarAtalho($nomeArq, $jogo, $titulo) {
   $bat = Join-Path $base $nomeArq
@@ -69,6 +82,7 @@ function CriarAtalho($nomeArq, $jogo, $titulo) {
 @echo off
 title $titulo - NAO FECHE ESTA JANELA
 set PATH=$node;%PATH%
+set CHAVES_ARQUIVO=$base\chaves.env
 cd /d "$proj\lives\ponte"
 set "CHROME="
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "CHROME=%ProgramFiles%\Google\Chrome\Application\chrome.exe"

@@ -17,6 +17,16 @@ const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
 
+// Chaves opcionais num arquivo (ex.: D:\\lives\\chaves.env), uma por linha: NOME=valor
+for (const arq of [process.env.CHAVES_ARQUIVO, require('path').join(__dirname, 'chaves.env')].filter(Boolean)) {
+  try {
+    for (const linha of require('fs').readFileSync(arq, 'utf8').split(/\r?\n/)) {
+      const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(linha);
+      if (m && m[2] && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+  } catch { /* arquivo não existe: tudo bem */ }
+}
+
 const args = process.argv.slice(2);
 const arg = (nome, padrao) => { const i = args.indexOf('--' + nome); return i >= 0 ? args[i + 1] : padrao; };
 
@@ -39,7 +49,7 @@ const servidor = http.createServer((req, res) => {
     let corpo = '';
     req.on('data', c => { corpo += c; if (corpo.length > 1e5) req.destroy(); });
     req.on('end', () => {
-      try { enviar(JSON.parse(corpo)); res.end('ok\n'); } catch { res.writeHead(400); res.end('json inválido\n'); }
+      try { const ev = JSON.parse(corpo); enviar(ev); tio.evento(ev); res.end('ok\n'); } catch { res.writeHead(400); res.end('json inválido\n'); }
     });
     return;
   }
@@ -101,6 +111,8 @@ function enviar(ev) {
   const msg = JSON.stringify(ev);
   for (const c of wss.clients) if (c.readyState === 1) c.send(msg);
 }
+// Tio Juca: responde comentários com IA e agradece em grupo (ver tio.js)
+const tio = require('./tio')({ enviar, log });
 // Níveis e vitórias ficam salvos em ponte/dados/<jogo>.json
 const arquivoDados = jogo => /^[a-z]{1,20}$/.test(jogo || '') ? path.join(PASTA_DADOS, `${jogo}.json`) : null;
 let catalogo = null; // presentes reais da sala (nome, moedas, imagem), mandado para a tabela do jogo
@@ -156,7 +168,7 @@ function usuarioDe(d) {
 function conectarTikTok() {
   const { TikTokLiveConnection, WebcastEvent, ControlEvent } = require('tiktok-live-connector');
   const metricas = require('./metricas');
-  const daLive = ev => { metricas.evento(ev); enviar(ev); };
+  const daLive = ev => { metricas.evento(ev); enviar(ev); tio.evento(ev); };
   const opcoes = { enableExtendedGiftInfo: true };
   if (process.env.EULER_API_KEY) opcoes.signApiKey = process.env.EULER_API_KEY;
 

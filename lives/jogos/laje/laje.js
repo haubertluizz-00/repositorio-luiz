@@ -274,6 +274,42 @@
   }
   setTimeout(pombo, rnd(5000, 15000));
 
+  // ---------- falas do Tio Juca (vêm da ponte: resposta da IA ou agradecimento) ----------
+  const filaFalas = [];
+  let falando = false;
+  function tioFala(ev) {
+    if (!ev || !ev.texto) return;
+    filaFalas.push(ev);
+    if (filaFalas.length > 4) filaFalas.shift();
+    if (!falando) proximaFala();
+  }
+  async function proximaFala() {
+    const ev = filaFalas.shift();
+    if (!ev) { falando = false; return; }
+    falando = true;
+    const el = $('fala');
+    el.querySelector('.txt').textContent = String(ev.texto).slice(0, 220);
+    el.querySelector('.para').textContent = ev.para && ev.para.nome ? `respondendo ${ev.para.nome}: "${String(ev.para.texto || '').slice(0, 60)}"` : '';
+    el.classList.add('ver');
+    let dur = Math.max(4000, String(ev.texto).length * 70);
+    if (ev.audio) {
+      // abaixa o som do vídeo enquanto o tio fala
+      const voz = $('voz'), v = cams[atual].v;
+      voz.src = ev.audio; voz.muted = somBloqueado;
+      volumeAte(v, 0.2, 300);
+      try {
+        await voz.play();
+        await new Promise(r => { const t = setTimeout(r, 30000); voz.onended = () => { clearTimeout(t); r(); }; });
+        dur = 900;
+      } catch { /* sem áudio: fica só o texto */ }
+      volumeAte(cams[atual].v, 1, 500);
+    }
+    await new Promise(r => setTimeout(r, dur));
+    el.classList.remove('ver');
+    await new Promise(r => setTimeout(r, 500));
+    proximaFala();
+  }
+
   // ---------- salvar ranking do dia / ponte ----------
   let ws = null;
   function salvar() {
@@ -294,6 +330,7 @@
       let ev; try { ev = JSON.parse(m.data); } catch { return; }
       if (ev.tipo === 'dados') carregar(ev.dados);
       else if (ev.tipo === 'catalogo') usarCatalogo(ev.presentes);
+      else if (ev.tipo === 'tio_fala') tioFala(ev);
       else evento(ev);
     };
     ws.onclose = () => { dispatchEvent(new CustomEvent('ponte', { detail: false })); setTimeout(conectarPonte, 3000); };
@@ -302,5 +339,5 @@
 
   montarTabela(); mostrarPatroes();
   ciclo();
-  window.laje = { evento, fila, estado: () => ({ fila: fila.length, comentarios: comentarios.length, curtidas }) };
+  window.laje = { evento, tioFala, fila, estado: () => ({ fila: fila.length, comentarios: comentarios.length, curtidas }) };
 })();
