@@ -120,13 +120,13 @@ Chaves no arquivo `D:\lives\chaves.env` (o instalador cria; tire o `#` e cole a 
 | Linha | Para quê |
 |---|---|
 | `ANTHROPIC_API_KEY=...` | Liga as respostas com IA (console.anthropic.com → API Keys) |
-| `TIO_MODELO=claude-haiku-5-5` | Troca o modelo. Padrão: `claude-opus-5-5` (melhor, mais caro). Haiku 5.5 sai ~40x mais barato |
+| `TIO_MODELO=claude-opus-5-5` | Troca o modelo. Padrão: `claude-haiku-5-5` (rápido e barato, ~US$ 0,03/hora). Opus 5.5 é mais esperto, ~40x mais caro |
 | `TIO_LIMITE_DIA_USD=1` | Gasto máximo por dia com a IA; passou, o tio só agradece |
 | `TIO_A_CADA=25` | Segundos entre respostas |
 | `ELEVENLABS_API_KEY=...` | Voz do tio (precisa de plano pago no ElevenLabs) |
 
 Filtros: comentários e respostas com ofensas, política, conteúdo sexual etc. são ignorados; palavrão na tela aparece censurado (p****) e na voz vira "piiii".
-Com Opus/Sonnet 5.5 a ponte liga o *fallback* do servidor (`fallbacks: "default"`): se o modelo recusar, outro responde.
+Se o modelo recusar ou responder com cara de "assistente" ("desculpe, não posso…"), a fala é trocada por uma desconversa do tio ("essa eu passo, aqui só se fala de churrasco e Flamengo!"). Com Opus/Sonnet 5.5 a ponte também liga o *fallback* do servidor (`fallbacks: "default"`).
 
 ## Medir o teste 24/7
 

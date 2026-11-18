@@ -68,7 +68,7 @@ if (-not (Test-Path $chaves)) {
 @"
 # Chaves opcionais da live. Tire o # do comeco da linha e cole a chave depois do =
 # ANTHROPIC_API_KEY=
-# TIO_MODELO=claude-haiku-5-5
+# TIO_MODELO=claude-haiku-5-5   (padrao; troque para claude-opus-5-5 se quiser mais esperto e mais caro)
 # TIO_LIMITE_DIA_USD=1
 # ELEVENLABS_API_KEY=
 # EULER_API_KEY=

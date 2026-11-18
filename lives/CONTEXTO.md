@@ -106,7 +106,7 @@ VPS (24h)
 - Foto oficial do Tio Juca: lives/jogos/laje/referencia/tio-juca-oficial.jpg (Qwen Image 3 edit juntando 3 versões; camisa listrada lisa sem escudo/texto). Custo até aqui no Higgsfield API: ~US$ 0,07.
 
 ## Tio Juca com IA (18/11/2026)
-- ponte/tio.js: responde 1 comentário a cada 25s via Claude API (@anthropic-ai/sdk 1.10.0), padrão claude-opus-5-5, effort low,
+- ponte/tio.js: responde 1 comentário a cada 25s via Claude API (@anthropic-ai/sdk 1.10.0), padrão claude-haiku-5-5 (pedido do usuário), effort low,
   fallbacks "default"; limite diário TIO_LIMITE_DIA_USD (padrão US$ 1); agradecimentos em grupo sem IA; voz ElevenLabs opcional.
 - Chaves em D:\lives\chaves.env (instalador cria modelo). Laje mostra balão "TIO JUCA respondendo Fulano".
 - ElevenLabs grátis foi bloqueado ("atividade incomum") → voz exige plano pago, ou o usuário grava as falas.

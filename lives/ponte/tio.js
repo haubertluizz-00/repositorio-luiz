@@ -4,7 +4,7 @@
 //
 // Variáveis (todas opcionais):
 //   ANTHROPIC_API_KEY     chave da API do Claude. Sem ela o tio só agradece (sem respostas da IA).
-//   TIO_MODELO            modelo do Claude (padrão: claude-opus-5-5; o mais barato é claude-haiku-5-5)
+//   TIO_MODELO            modelo do Claude (padrão: claude-haiku-5-5, rápido e barato; o mais esperto é claude-opus-5-5)
 //   TIO_A_CADA            segundos entre uma resposta e outra (padrão 25)
 //   TIO_LIMITE_DIA_USD    gasto máximo por dia com a IA, em dólar (padrão 1.00). Passou disso, para de responder.
 //   ELEVENLABS_API_KEY    chave do ElevenLabs para a voz (sem ela, a fala aparece só escrita)
@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk').default;
 
-const MODELO = process.env.TIO_MODELO || 'claude-opus-5-5';
+const MODELO = process.env.TIO_MODELO || 'claude-haiku-5-5';
 const A_CADA = Math.max(8, Number(process.env.TIO_A_CADA || 25));
 const LIMITE_DIA = Number(process.env.TIO_LIMITE_DIA_USD || 1);
 const VOZ_ID = process.env.TIO_VOZ_ID || 'DFSIymlMNpXmTRzLbJ9N';
@@ -47,6 +47,15 @@ Responda SÓ com a fala do Tio Juca.`;
 // palavras que fazem o comentário (ou a resposta) ser ignorado
 const BLOQUEIO = /\b(macac\w*|viad\w*|bich(a|inha)s?|traveco\w*|sapat[aã]o|retardad\w*|mongol\w*|preto\s+imundo|nazis\w*|hitler|estupr\w*|pedof\w*|nudes?|pelad[ao]s?|buceta|xoxota|piroca|pau\s+no|bolsonar\w*|lula\b|petista|bolsominion|suic[ií]d\w*|se\s+matar)\b/i;
 const PALAVROES = /\b(porra|caralho|merda|puta|bosta|cacete|desgraç\w*|fdp)\b/gi;
+
+// resposta com cara de "assistente recusando" nunca vai para a tela: vira uma desconversa do tio
+const PARECE_RECUSA = /\b(n[aã]o posso (ajudar|responder|falar)|como (uma )?(ia|intelig[eê]ncia artificial|assistente)|desculp\w*,? mas|n[aã]o [eé] apropriad|n[aã]o me sinto confort|sou um modelo|pol[ií]ticas? de)\b/i;
+const DESCONVERSA = [
+  'Ih, rapaz, {n}, essa aí eu não respondo não! Deixa eu virar a carne aqui!',
+  'Ô {n}, pergunta difícil! Pergunta pra Dona Maria aí de cima, que ela sabe de tudo!',
+  'Hein? {n}, o vento tá forte aqui na laje, não ouvi nada não! Mengão!',
+  'Essa eu passo, {n}! Aqui na laje só se fala de churrasco e Flamengo!',
+];
 
 const normaliza = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
 const limpaTexto = s => String(s || '').replace(/\s+/g, ' ').trim();
@@ -126,6 +135,8 @@ module.exports = function criarTio({ enviar, log }) {
     return melhor;
   }
 
+  const desconversa = nome => DESCONVERSA[Math.floor(Math.random() * DESCONVERSA.length)].replace('{n}', nome);
+
   function custoDe(uso) {
     const [ent, sai] = PRECOS[MODELO] || PRECOS['claude-opus-5-5'];
     return ((uso.input_tokens || 0) * ent + (uso.output_tokens || 0) * sai) / 1e6;
@@ -152,10 +163,11 @@ module.exports = function criarTio({ enviar, log }) {
         ? await cliente.beta.messages.create({ ...pedido, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' })
         : await cliente.messages.create(pedido);
       gasto.usd += custoDe(resposta.usage || {});
-      if (resposta.stop_reason === 'refusal') return;
+      if (resposta.stop_reason === 'refusal') { await falar(desconversa(nome), { tipo: 'resposta', para: { nome, texto: c.texto } }); return; }
       let texto = resposta.content.filter(b => b.type === 'text').map(b => b.text).join(' ');
       texto = limpaTexto(texto).replace(/^["“”']|["“”']$/g, '');
       if (!texto || texto.length > 220 || BLOQUEIO.test(normaliza(texto))) return;
+      if (PARECE_RECUSA.test(normaliza(texto))) texto = desconversa(nome);
       ultimasFalas.push(texto); if (ultimasFalas.length > 5) ultimasFalas.shift();
       await falar(texto, { tipo: 'resposta', para: { nome, texto: c.texto } });
     } catch (e) {
