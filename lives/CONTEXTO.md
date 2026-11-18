@@ -103,3 +103,4 @@ VPS (24h)
 - Atalho INICIAR-LAJE criado pelo instalador (ponte com --jogo laje).
 - Voz do Tio Juca salva no ElevenLabs: nome "Tio Juca", voice_id DFSIymlMNpXmTRzLbJ9N (opção 2 de 3, escolhida pelo usuário).
 - Higgsfield conectado, mas com 0 créditos (plano grátis): usuário precisa assinar um plano para gerar os vídeos.
+- Foto oficial do Tio Juca: lives/jogos/laje/referencia/tio-juca-oficial.jpg (Qwen Image 3 edit juntando 3 versões; camisa listrada lisa sem escudo/texto). Custo até aqui no Higgsfield API: ~US$ 0,07.
