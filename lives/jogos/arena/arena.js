@@ -34,7 +34,8 @@ const CORES = ['#ff3df0', '#36e4ff', '#ffd34d', '#7cff6b', '#ff7a3d', '#a07bff',
 // ---------- Renderização ----------
 const palco = document.getElementById('palco');
 const Q = new URLSearchParams(location.search);
-let leve = Q.has('leve');                 // ?leve=1 força o modo leve; ?alta=1 nunca troca sozinho
+let leve = Q.has('leve');                 // ?leve=1 força o modo leve (PC fraco); ?alta=1 nunca troca sozinho
+if (leve) CFG.MAX_BOLAS = 30;
 const renderer = new THREE.WebGLRenderer({ antialias: !leve, powerPreference: 'high-performance' });
 renderer.setPixelRatio(1);
 renderer.setSize(W, H);
@@ -118,8 +119,8 @@ function pontos(qtd, espalhar, tam, cor, aditivo = true) {
   const mat = new THREE.PointsMaterial({ size: tam, color: cor, transparent: true, opacity: 0.9, depthWrite: false, blending: aditivo ? THREE.AdditiveBlending : THREE.NormalBlending });
   const obj = new THREE.Points(geo, mat); cena.add(obj); return obj;
 }
-pontos(900, (p, i) => { const a = Math.random() * Math.PI * 2, r = rnd(40, 120); p[i] = Math.cos(a) * r; p[i + 1] = rnd(-20, 80); p[i + 2] = Math.sin(a) * r - 30; }, 0.5, '#ffffff', false);
-const brasas = pontos(260, (p, i) => { p[i] = rnd(-16, 16); p[i + 1] = rnd(-30, 2); p[i + 2] = rnd(-16, 16); }, 0.22, '#ff6bf5');
+pontos(leve ? 200 : 900, (p, i) => { const a = Math.random() * Math.PI * 2, r = rnd(40, 120); p[i] = Math.cos(a) * r; p[i + 1] = rnd(-20, 80); p[i + 2] = Math.sin(a) * r - 30; }, 0.5, '#ffffff', false);
+const brasas = pontos(leve ? 70 : 260, (p, i) => { p[i] = rnd(-16, 16); p[i + 1] = rnd(-30, 2); p[i + 2] = rnd(-16, 16); }, 0.22, '#ff6bf5');
 
 // ---------- Partículas ----------
 const MAXP = 3000;
@@ -132,6 +133,7 @@ particulas.frustumCulled = false; cena.add(particulas);
 let pProx = 0;
 const corTmp = new THREE.Color();
 function explodir(x, y, z, qtd, cor, forca = 8, subir = 4) {
+  if (leve) qtd = Math.ceil(qtd * 0.35);
   corTmp.set(cor);
   for (let k = 0; k < qtd; k++) {
     const i = pProx; pProx = (pProx + 1) % MAXP;
@@ -161,7 +163,7 @@ function onda(x, z, raio, cor) {
 }
 
 // ---------- Fotos e texturas das bolinhas ----------
-const geoBola = new THREE.SphereGeometry(1, 48, 32);
+const geoBola = leve ? new THREE.SphereGeometry(1, 24, 16) : new THREE.SphereGeometry(1, 48, 32);
 geoBola.rotateY(-Math.PI / 2); // centro da textura passa a olhar para +Z (usado com lookAt)
 
 function desenharAvatar(canvas, cor, img, texto) {
@@ -733,7 +735,7 @@ function aplicarLeve(nivel) {
   renderer.setPixelRatio(nivel >= 2 ? 0.6 : 0.8);
   console.info('[arena] modo leve', nivel);
 }
-if (leve) aplicarLeve(1);
+if (leve) aplicarLeve(2);
 function medirDesempenho(dt) {
   if (Q.has('alta') || MANUAL || nivelLeve >= 2) return;
   amostra++; tempoAmostra += dt;
@@ -742,12 +744,15 @@ function medirDesempenho(dt) {
   if (fps < 40) aplicarLeve(nivelLeve + 1);
 }
 
+let acumulado = 0;
 function quadro() {
+  requestAnimationFrame(quadro);
   relogio.update();
-  const dt = Math.min(0.1, relogio.getDelta());
+  const bruto = relogio.getDelta();
+  if (leve) { acumulado += bruto; if (acumulado < 1 / 31) return; }
+  const dt = Math.min(0.1, leve ? acumulado : bruto); acumulado = 0;
   medirDesempenho(dt);
   passo(dt);
-  requestAnimationFrame(quadro);
 }
 completarCpu();
 if (!MANUAL) requestAnimationFrame(quadro);

@@ -76,7 +76,7 @@ if (-not (Test-Path $chaves)) {
 }
 
 # 4) Atalhos para ligar a live: INICIAR-LIVE (Arena) e INICIAR-LAJE (A Laje do Tio Juca)
-function CriarAtalho($nomeArq, $jogo, $titulo) {
+function CriarAtalho($nomeArq, $jogo, $titulo, $extra = '') {
   $bat = Join-Path $base $nomeArq
   @"
 @echo off
@@ -90,9 +90,9 @@ if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "CHROME=
 if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" set "CHROME=%LocalAppData%\Google\Chrome\Application\chrome.exe"
 rem abre o jogo numa janela propria, em pe, que nao pausa quando fica atras de outra janela
 if defined CHROME (
-  start "" cmd /c "timeout /t 3 >nul & start "" "%CHROME%" --app=http://localhost:8787/$jogo/ --no-first-run --no-default-browser-check --window-size=608,1080 --window-position=0,0 --user-data-dir="$base\chrome-live" --disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required"
+  start "" cmd /c "timeout /t 3 >nul & start "" "%CHROME%" --app=http://localhost:8787/$jogo/$extra --no-first-run --no-default-browser-check --window-size=608,1080 --window-position=0,0 --user-data-dir="$base\chrome-live" --disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required"
 ) else (
-  start "" cmd /c "timeout /t 3 >nul & start "" http://localhost:8787/$jogo/"
+  start "" cmd /c "timeout /t 3 >nul & start "" http://localhost:8787/$jogo/$extra"
 )
 echo.
 echo  $titulo ligado. Deixe esta janela aberta enquanto a live estiver no ar.
@@ -105,7 +105,8 @@ pause
   return $bat
 }
 Passo 'Criando os atalhos INICIAR-LIVE e INICIAR-LAJE...'
-$bat = CriarAtalho 'INICIAR-LIVE.bat' 'arena' 'ARENA'
+# a Arena abre no modo leve (PC fraco: sem brilho/sombras, 30 quadros por segundo)
+$bat = CriarAtalho 'INICIAR-LIVE.bat' 'arena' 'ARENA' '?leve=1'
 $null = CriarAtalho 'INICIAR-LAJE.bat' 'laje' 'LAJE DO TIO JUCA'
 
 # 5) Não deixar o PC dormir na tomada
