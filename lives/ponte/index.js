@@ -1,0 +1,240 @@
+// Ponte: lê a live do TikTok e manda os eventos para o jogo.
+// Também serve os arquivos do jogo em http://localhost:PORTA
+//
+// Uso:
+//   node index.js --usuario paisitottk          (conecta na live de verdade)
+//   node index.js                               (só serve o jogo, sem TikTok)
+//   node index.js --jogo escalada               (escolhe o jogo: arena (padrão), escalada, guerra)
+//
+// Variáveis opcionais:
+//   PORTA=8787
+//   JOGO=arena
+//   EULER_API_KEY=...   chave do Euler Stream (assinatura); sem ela usa o plano grátis, que tem limite
+'use strict';
+
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { WebSocketServer } = require('ws');
+
+// Chaves opcionais num arquivo (ex.: D:\\lives\\chaves.env), uma por linha: NOME=valor
+for (const arq of [process.env.CHAVES_ARQUIVO, require('path').join(__dirname, 'chaves.env')].filter(Boolean)) {
+  try {
+    for (const linha of require('fs').readFileSync(arq, 'utf8').split(/\r?\n/)) {
+      const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(linha);
+      if (m && m[2] && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+  } catch { /* arquivo não existe: tudo bem */ }
+}
+
+const args = process.argv.slice(2);
+const arg = (nome, padrao) => { const i = args.indexOf('--' + nome); return i >= 0 ? args[i + 1] : padrao; };
+
+const PORTA = Number(process.env.PORTA || arg('porta', 8787));
+const USUARIO = (arg('usuario', process.env.TIKTOK_USUARIO || '') || '').replace(/^@/, '');
+const JOGO = arg('jogo', process.env.JOGO || 'arena');
+const PASTA_JOGOS = path.resolve(__dirname, '..', 'jogos');
+const PASTA_DADOS = path.resolve(__dirname, 'dados');
+const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.mp4': 'video/mp4', '.webm': 'video/webm' };
+
+const log = (...m) => console.log(new Date().toISOString().slice(11, 19), ...m);
+
+// ---------- Servidor do jogo ----------
+const servidor = http.createServer((req, res) => {
+  const url = new URL(req.url, 'http://x');
+  // Teste manual: curl -X POST localhost:8787/evento -d '{"tipo":"presente","nome":"luiz","diamantes":100}'
+  if (req.method === 'POST' && url.pathname === '/evento') {
+    const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+    if (!local) { res.writeHead(403); return res.end(); }
+    let corpo = '';
+    req.on('data', c => { corpo += c; if (corpo.length > 1e5) req.destroy(); });
+    req.on('end', () => {
+      try { const ev = JSON.parse(corpo); enviar(ev); tio.evento(ev); res.end('ok\n'); } catch { res.writeHead(400); res.end('json inválido\n'); }
+    });
+    return;
+  }
+  // Foto de perfil passando pela ponte (o 3D só consegue usar imagem do mesmo endereço do jogo)
+  if (url.pathname === '/foto') return servirFoto(url.searchParams.get('u'), res);
+  if (url.pathname === '/') { res.writeHead(302, { Location: `/${JOGO}/${url.search}` }); return res.end(); }
+  let arquivo = path.normalize(path.join(PASTA_JOGOS, decodeURIComponent(url.pathname)));
+  if (!arquivo.startsWith(PASTA_JOGOS + path.sep)) { res.writeHead(403); return res.end(); }
+  if (url.pathname.endsWith('/')) arquivo = path.join(arquivo, 'index.html');
+  fs.stat(arquivo, (err, st) => {
+    if (err || !st.isFile()) { res.writeHead(404); return res.end('não encontrado'); }
+    const tipo = TIPOS[path.extname(arquivo)] || 'application/octet-stream';
+    const faixa = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (faixa && /^video|^audio/.test(tipo)) {
+      // vídeo em pedaços: deixa o navegador pular para qualquer ponto do vídeo
+      let ini = faixa[1] ? Number(faixa[1]) : st.size - Number(faixa[2]);
+      let fim = faixa[1] && faixa[2] ? Number(faixa[2]) : st.size - 1;
+      if (isNaN(ini) || ini < 0 || ini >= st.size || fim < ini) { res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); return res.end(); }
+      fim = Math.min(fim, st.size - 1);
+      res.writeHead(206, { 'Content-Type': tipo, 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${ini}-${fim}/${st.size}`, 'Content-Length': fim - ini + 1, 'Cache-Control': 'no-store' });
+      return fs.createReadStream(arquivo, { start: ini, end: fim }).pipe(res);
+    }
+    res.writeHead(200, { 'Content-Type': tipo, 'Content-Length': st.size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' });
+    fs.createReadStream(arquivo).pipe(res);
+  });
+});
+
+// Com a VPS aberta na internet, defina CHAVE_JOGO e abra o jogo com ?k=CHAVE_JOGO.
+// Sem a chave certa ninguém conecta no jogo (nem apaga os níveis salvos).
+const CHAVE_JOGO = process.env.CHAVE_JOGO || '';
+const cacheFotos = new Map();
+const HOSTS_FOTO = /(^|\.)(tiktokcdn\.com|tiktokcdn-us\.com|tiktokcdn-eu\.com|ibyteimg\.com|byteimg\.com|muscdn\.com)$/;
+async function servirFoto(u, res) {
+  let alvo;
+  try { alvo = new URL(u); } catch { res.writeHead(400); return res.end(); }
+  if (alvo.protocol !== 'https:' || !HOSTS_FOTO.test(alvo.hostname)) { res.writeHead(403); return res.end(); }
+  let foto = cacheFotos.get(u);
+  if (!foto) {
+    try {
+      const r = await fetch(alvo, { signal: AbortSignal.timeout(8000) });
+      const tipo = r.headers.get('content-type') || '';
+      if (!r.ok || !tipo.startsWith('image/')) throw new Error('não é imagem');
+      const corpo = Buffer.from(await r.arrayBuffer());
+      if (corpo.length > 2e6) throw new Error('grande demais');
+      foto = { tipo, corpo };
+      cacheFotos.set(u, foto);
+      if (cacheFotos.size > 800) cacheFotos.delete(cacheFotos.keys().next().value);
+    } catch { res.writeHead(404); return res.end(); }
+  }
+  res.writeHead(200, { 'Content-Type': foto.tipo, 'Cache-Control': 'max-age=86400' });
+  res.end(foto.corpo);
+}
+
+const wss = new WebSocketServer({
+  server: servidor, path: '/ws',
+  verifyClient: ({ req }) => !CHAVE_JOGO || new URL(req.url, 'http://x').searchParams.get('k') === CHAVE_JOGO,
+});
+function enviar(ev) {
+  const msg = JSON.stringify(ev);
+  for (const c of wss.clients) if (c.readyState === 1) c.send(msg);
+}
+// Tio Juca: responde comentários com IA e agradece em grupo (ver tio.js)
+const tio = require('./tio')({ enviar, log });
+// Níveis e vitórias ficam salvos em ponte/dados/<jogo>.json
+const arquivoDados = jogo => /^[a-z]{1,20}$/.test(jogo || '') ? path.join(PASTA_DADOS, `${jogo}.json`) : null;
+let catalogo = null; // presentes reais da sala (nome, moedas, imagem), mandado para a tabela do jogo
+wss.on('connection', cliente => {
+  log('jogo conectado na ponte');
+  if (catalogo) cliente.send(JSON.stringify({ tipo: 'catalogo', presentes: catalogo }));
+  cliente.on('message', bruto => {
+    let m; try { m = JSON.parse(bruto); } catch { return; }
+    const arq = arquivoDados(m.jogo);
+    if (!arq) return;
+    if (m.tipo === 'pedir_dados') {
+      fs.readFile(arq, 'utf8', (err, txt) => {
+        let dados = null; try { dados = err ? null : JSON.parse(txt); } catch { /* arquivo corrompido */ }
+        cliente.send(JSON.stringify({ tipo: 'dados', dados }));
+      });
+    } else if (m.tipo === 'salvar' && m.dados) {
+      const txt = JSON.stringify(m.dados);
+      if (txt.length > 5e6) return;
+      fs.mkdirSync(PASTA_DADOS, { recursive: true });
+      fs.writeFile(arq + '.tmp', txt, err => { if (!err) fs.rename(arq + '.tmp', arq, () => {}); });
+    }
+  });
+});
+
+servidor.on('error', e => {
+  if (e.code === 'EADDRINUSE') {
+    console.log(`\nO jogo JÁ ESTÁ LIGADO em outra janela (porta ${PORTA}). Abra http://localhost:${PORTA} no Chrome.`);
+    console.log('Para reiniciar, feche a outra janela preta e rode de novo.\n');
+    process.exit(1);
+  }
+  throw e;
+});
+wss.on('error', () => { /* tratado acima */ });
+servidor.listen(PORTA, () => log(`jogo "${JOGO}" em http://localhost:${PORTA}  (teste: http://localhost:${PORTA}/?sim=1)`));
+
+// ---------- TikTok ----------
+if (!USUARIO) {
+  log('sem --usuario: rodando só o jogo, sem ler a live');
+} else {
+  conectarTikTok();
+}
+
+function usuarioDe(d) {
+  const u = d.user || {};
+  const fotoUrls = (u.profilePicture && (u.profilePicture.urls || u.profilePicture.url)) || [];
+  return {
+    id: String(u.userId || u.uniqueId || 'anon'),
+    nome: u.nickname || u.uniqueId || 'anônimo',
+    foto: Array.isArray(fotoUrls) ? fotoUrls[0] : fotoUrls,
+  };
+}
+
+function conectarTikTok() {
+  const { TikTokLiveConnection, WebcastEvent, ControlEvent } = require('tiktok-live-connector');
+  const metricas = require('./metricas');
+  const daLive = ev => { metricas.evento(ev); enviar(ev); tio.evento(ev); };
+  const opcoes = { enableExtendedGiftInfo: true };
+  if (process.env.EULER_API_KEY) opcoes.signApiKey = process.env.EULER_API_KEY;
+
+  let conexao = null;
+  let tentando = false;
+
+  async function tentar() {
+    if (tentando) return;
+    tentando = true;
+    conexao = new TikTokLiveConnection(USUARIO, opcoes);
+
+    conexao.on(WebcastEvent.CHAT, d => daLive({ tipo: 'comentario', ...usuarioDe(d), texto: d.comment }));
+    conexao.on(WebcastEvent.LIKE, d => daLive({ tipo: 'like', ...usuarioDe(d), likes: d.likeCount || 1 }));
+    conexao.on(WebcastEvent.FOLLOW, d => daLive({ tipo: 'seguir', ...usuarioDe(d) }));
+    conexao.on(WebcastEvent.SHARE, d => daLive({ tipo: 'compartilhar', ...usuarioDe(d) }));
+    conexao.on(WebcastEvent.ROOM_USER, d => metricas.espectadores(d.viewerCount || 0));
+    conexao.on(WebcastEvent.GIFT, d => {
+      const det = d.giftDetails || {};
+      const ext = d.extendedGiftInfo || {};
+      // presentes em sequência (combo): só conta quando a sequência termina
+      if (det.giftType === 1 && !d.repeatEnd) return;
+      const diamantes = det.diamondCount || ext.diamond_count || 1;
+      const ev = { tipo: 'presente', ...usuarioDe(d), presente: det.giftName || ext.name || 'presente', diamantes, qtd: d.repeatCount || 1 };
+      log(`presente: ${ev.nome} → ${ev.presente} x${ev.qtd} (${diamantes}💎)`);
+      daLive(ev);
+    });
+    conexao.on(WebcastEvent.STREAM_END, () => { log('live terminou'); metricas.setAoVivo(false); religar(60); });
+    conexao.on(ControlEvent.DISCONNECTED, () => { log('desconectado do TikTok'); metricas.setAoVivo(false); religar(20); });
+    conexao.on(ControlEvent.ERROR, e => log('erro:', (e && (e.info || e.message)) || e));
+
+    try {
+      const estado = await conexao.connect();
+      log(`conectado na live de @${USUARIO} (sala ${estado.roomId})`);
+      try {
+        catalogo = lerCatalogo(conexao.availableGifts);
+        if (catalogo.length) { log(`${catalogo.length} presentes da sala carregados para a tabela`); enviar({ tipo: 'catalogo', presentes: catalogo }); }
+      } catch (e) { log('não deu para ler a lista de presentes:', e.message); }
+      metricas.setAoVivo(true);
+      tentando = false;
+    } catch (e) {
+      const offline = e && /offline/i.test(e.constructor?.name + ' ' + e.message);
+      log(offline ? `@${USUARIO} não está ao vivo; tento de novo em 60s` : `falha ao conectar: ${e && e.message}`);
+      tentando = false;
+      religar(offline ? 60 : 30);
+    }
+  }
+
+  let timer = null;
+  function religar(seg) {
+    clearTimeout(timer);
+    try { conexao && conexao.disconnect(); } catch { /* já desconectado */ }
+    timer = setTimeout(tentar, seg * 1000);
+  }
+
+  tentar();
+}
+
+// Converte a lista de presentes da sala (formato muda entre versões) para { nome, moedas, imagem }
+function lerCatalogo(bruto) {
+  const lista = Array.isArray(bruto) ? bruto : (bruto && (bruto.gifts || (bruto.data && bruto.data.gifts))) || [];
+  const urls = img => img && ((img.url_list || img.urlList || img.url || [])[0] || (typeof img.url === 'string' ? img.url : null));
+  return lista.map(g => ({
+    nome: String(g.name || g.giftName || '').slice(0, 20),
+    moedas: Number(g.diamond_count ?? g.diamondCount ?? 0),
+    imagem: urls(g.image) || urls(g.icon) || null,
+  })).filter(g => g.nome && g.moedas > 0);
+}
+
+process.on('unhandledRejection', e => log('erro não tratado:', e && e.message));
