@@ -111,3 +111,14 @@ VPS (24h)
 - Chaves em D:\lives\chaves.env (instalador cria modelo). Laje mostra balão "TIO JUCA respondendo Fulano".
 - ElevenLabs grátis foi bloqueado ("atividade incomum") → voz exige plano pago, ou o usuário grava as falas.
 - Galinha: v2 no Kling 2.5 Turbo Pro com 1ª imagem já com a galinha (Qwen edit). Ideia para próximas: "pose base" no começo e fim de cada clipe.
+
+## Referência: tutorial "streamer de IA no TikTok" (Santi Studio, youtu.be/KtRWbPz1fiU) — resumo vindo de outra sessão (22/11/2026)
+- Código aberto: github.com/SantiStudioOficial/streamer-ia-tiktok (Python + edge-tts + visor.html). Personagem velhinho pescador: ~3h sozinho, 882 seguidores, 11 mil curtidas (presentes não mostrados).
+- Ideias aproveitáveis para nós:
+  - 2 vídeos em loop com a MESMA imagem no 1º e último quadro: REPOSO (respira, pisca, boca fechada) e HABLANDO (boca abre e fecha) → enquanto a voz fala, toca o "falando". Resolve boca sem lip-sync caro.
+  - IA grátis: Google AI Studio (gemini flash-lite) com reserva Groq; frases prontas se tudo falhar.
+  - Voz grátis: edge-tts (pt-BR-AntonioNeural para homem).
+  - Leitura da live pelo TikFinity Desktop (ws://127.0.0.1:21213/) em vez de Euler — alternativa se a ponte não conectar.
+  - Responder só quem mandou presente; agradecer follows em grupo; metas de moedas/seguidores na tela; música de fundo que abaixa na fala.
+- Cuidados: LIVE Studio em conta nova bloqueia câmera virtual do OBS até live de 25+ min com câmera real; 14 dias de teste (suspensão tira o LIVE Studio).
+  Versão "quase parada" teve presentes suspensos em minutos; a com movimento/legendas durou 3h (sem garantia). Usar 127.0.0.1 (não localhost) no LIVE Studio. Fundo com coisas caindo denuncia o loop.
