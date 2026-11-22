@@ -62,17 +62,18 @@
     v.style.transition = `transform ${Math.max(2, dur)}s linear`;
     v.style.transform = b;
   }
-  async function trocar(arquivo, { corte = false, cam = 'normal', ...op } = {}) {
+  async function trocar(arquivo, { corte = false, cam = 'normal', loop = false, vol = 1, ...op } = {}) {
     const prox = cams[1 - atual], ant = cams[atual];
     await preparar(prox.v, arquivo, op);
+    prox.v.loop = loop;
     const dur = isFinite(prox.v.duration) ? prox.v.duration - prox.v.currentTime : 8;
     camera(prox.v, cam, op.seg || dur);
-    prox.v.volume = corte ? 1 : 0;
+    prox.v.volume = corte ? vol : 0;
     await tocar(prox.v);
     prox.cam.style.transition = ant.cam.style.transition = corte ? 'none' : '';
     if (corte) flash();
     prox.cam.classList.add('ativa'); ant.cam.classList.remove('ativa');
-    if (!corte) volumeAte(prox.v, 1, 700);
+    if (!corte) volumeAte(prox.v, vol, 700);
     volumeAte(ant.v, 0, corte ? 50 : 700);
     setTimeout(() => ant.v.pause(), 900);
     atual = 1 - atual;
@@ -82,9 +83,11 @@
 
   // ---------- fila de presentes e o ciclo principal ----------
   const fila = [];
-  let acordar = null;
-  const avisar = () => { if (acordar) { const a = acordar; acordar = null; a(); } };
+  let acordar = null, pendente = false;
+  let tioFalando = false;   // enquanto a voz do tio toca, mostra o vídeo "falando" (boca mexendo)
+  const avisar = () => { if (acordar) { const a = acordar; acordar = null; a(); } else pendente = true; };
   const esperarOuPresente = ms => new Promise(r => {
+    if (pendente) { pendente = false; r(true); return; }
     const t = setTimeout(() => { acordar = null; r(false); }, ms);
     acordar = () => { clearTimeout(t); r(true); };
   });
@@ -95,10 +98,17 @@
   };
 
   async function ciclo() {
-    let ultimoParado = null, ultimaFala = null, proxFala = agoraS() + rnd(...C.falaACada);
+    let ultimoParado = null, ultimaFala = null, ultimoFalando = null, proxFala = agoraS() + rnd(...C.falaACada);
     for (;;) {
       try {
         if (fila.length) { await tocarPresente(fila.shift()); continue; }
+        if (tioFalando && (C.falando || []).length) {
+          // vídeo "falando" começa e termina no mesmo quadro do "parado": em loop não aparece emenda
+          ultimoFalando = sortear(C.falando, ultimoFalando);
+          await trocar(ultimoFalando, { inicio: 0, cam: 'nenhum', loop: true, vol: 0.15 });
+          while (tioFalando && !fila.length) await esperarOuPresente(30000);
+          continue;
+        }
         if (C.falas.length && agoraS() >= proxFala) {
           proxFala = agoraS() + rnd(...C.falaACada);
           ultimaFala = sortear(C.falas, ultimaFala);
@@ -293,16 +303,19 @@
     el.classList.add('ver');
     let dur = Math.max(4000, String(ev.texto).length * 70);
     if (ev.audio) {
-      // abaixa o som do vídeo enquanto o tio fala
-      const voz = $('voz'), v = cams[atual].v;
+      // troca para o vídeo do tio falando e abaixa o som do vídeo enquanto a voz toca
+      const voz = $('voz');
       voz.src = ev.audio; voz.muted = somBloqueado;
-      volumeAte(v, 0.2, 300);
+      const temBoca = (C.falando || []).length > 0;
+      if (temBoca && !fila.length) { tioFalando = true; avisar(); await new Promise(r => setTimeout(r, 450)); }
+      else volumeAte(cams[atual].v, 0.2, 300);
       try {
         await voz.play();
         await new Promise(r => { const t = setTimeout(r, 30000); voz.onended = () => { clearTimeout(t); r(); }; });
         dur = 900;
       } catch { /* sem áudio: fica só o texto */ }
-      volumeAte(cams[atual].v, 1, 500);
+      if (tioFalando) { tioFalando = false; avisar(); }
+      else volumeAte(cams[atual].v, 1, 500);
     }
     await new Promise(r => setTimeout(r, dur));
     el.classList.remove('ver');

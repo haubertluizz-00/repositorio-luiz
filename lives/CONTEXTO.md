@@ -122,3 +122,10 @@ VPS (24h)
   - Responder só quem mandou presente; agradecer follows em grupo; metas de moedas/seguidores na tela; música de fundo que abaixa na fala.
 - Cuidados: LIVE Studio em conta nova bloqueia câmera virtual do OBS até live de 25+ min com câmera real; 14 dias de teste (suspensão tira o LIVE Studio).
   Versão "quase parada" teve presentes suspensos em minutos; a com movimento/legendas durou 3h (sem garantia). Usar 127.0.0.1 (não localhost) no LIVE Studio. Fundo com coisas caindo denuncia o loop.
+
+## Tio Juca "igual ao tutorial" (22/11/2026)
+- Voz GRÁTIS ligada por padrão (msedge-tts 2.1.1, pt-BR-AntonioNeural, ritmo +6%, tom -8Hz). ElevenLabs só se tiver chave.
+- Tocador: config.js `falando: [...]` = vídeos do tio mexendo a boca, SEM som, que começam e terminam na mesma pose dos "parados".
+  Enquanto a voz toca, o tocador põe o "falando" em loop e volta pro parado no fim. Presente tem prioridade.
+- Bug corrigido: as falas do tio iam com `tipo` errado (agradecimento/resposta) e a página ignorava; agora o campo é `modo`.
+- Falta: gerar os vídeos reais "parado" (respira/pisca) e "falando" (boca) a partir de referencia/tio-juca-oficial.jpg com 1º = último quadro.

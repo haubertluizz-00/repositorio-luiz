@@ -7,6 +7,10 @@ window.LAJE = {
   // Vídeos do tio parado na laje (sem falar ou só resmungando). O tocador sorteia trechos deles.
   parados: ['parado1.mp4', 'parado2.mp4', 'parado3.mp4'],
 
+  // Tio FALANDO (boca abrindo e fechando, sem som). Toca em loop enquanto a voz da IA fala.
+  // Truque: tem que COMEÇAR e TERMINAR na mesma pose dos vídeos parados, aí a troca e o loop não aparecem.
+  falando: ['falando1.mp4'],
+
   // Falas soltas ("comenta aí, caramba!"). Tocam inteiras, de vez em quando, entre os trechos parados.
   falas: ['fala1.mp4', 'fala2.mp4'],
   falaACada: [35, 70],          // segundos entre uma fala e outra (sorteado entre os dois números)

@@ -7,8 +7,10 @@
 //   TIO_MODELO            modelo do Claude (padrão: claude-haiku-5-5, rápido e barato; o mais esperto é claude-opus-5-5)
 //   TIO_A_CADA            segundos entre uma resposta e outra (padrão 25)
 //   TIO_LIMITE_DIA_USD    gasto máximo por dia com a IA, em dólar (padrão 1.00). Passou disso, para de responder.
-//   ELEVENLABS_API_KEY    chave do ElevenLabs para a voz (sem ela, a fala aparece só escrita)
+//   ELEVENLABS_API_KEY    chave do ElevenLabs para a voz paga (mais natural). Sem ela usa a voz GRÁTIS da Microsoft.
 //   TIO_VOZ_ID            voz do ElevenLabs (padrão: a voz "Tio Juca")
+//   TIO_VOZ_GRATIS        voz grátis da Microsoft (padrão pt-BR-AntonioNeural); "nenhuma" deixa a fala só escrita
+//   TIO_VOZ_RITMO / TIO_VOZ_TOM   ajuste da voz grátis (padrão +6% e -8Hz, um pouco mais grave)
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -18,6 +20,9 @@ const MODELO = process.env.TIO_MODELO || 'claude-haiku-5-5';
 const A_CADA = Math.max(8, Number(process.env.TIO_A_CADA || 25));
 const LIMITE_DIA = Number(process.env.TIO_LIMITE_DIA_USD || 1);
 const VOZ_ID = process.env.TIO_VOZ_ID || 'DFSIymlMNpXmTRzLbJ9N';
+const VOZ_GRATIS = process.env.TIO_VOZ_GRATIS || 'pt-BR-AntonioNeural';
+const VOZ_RITMO = process.env.TIO_VOZ_RITMO || '+6%';
+const VOZ_TOM = process.env.TIO_VOZ_TOM || '-8Hz';
 const PASTA_FALAS = path.resolve(__dirname, '..', 'jogos', 'laje', 'falas');
 
 // preço por 1 milhão de tokens (entrada, saída) para a conta de gasto do dia
@@ -64,7 +69,8 @@ module.exports = function criarTio({ enviar, log }) {
   const temIA = !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
   const cliente = temIA ? new Anthropic() : null;
   const temVoz = !!process.env.ELEVENLABS_API_KEY;
-  log(`tio juca: ${temIA ? `respostas com IA (${MODELO}, a cada ${A_CADA}s, limite US$ ${LIMITE_DIA.toFixed(2)}/dia)` : 'sem ANTHROPIC_API_KEY, só agradecimentos'}; voz: ${temVoz ? 'ElevenLabs' : 'só texto'}`);
+  const temVozGratis = !temVoz && VOZ_GRATIS.toLowerCase() !== 'nenhuma';
+  log(`tio juca: ${temIA ? `respostas com IA (${MODELO}, a cada ${A_CADA}s, limite US$ ${LIMITE_DIA.toFixed(2)}/dia)` : 'sem ANTHROPIC_API_KEY, só agradecimentos'}; voz: ${temVoz ? 'ElevenLabs' : temVozGratis ? `grátis (${VOZ_GRATIS})` : 'só texto'}`);
 
   const comentarios = [];        // { id, nome, texto, em, presenteou }
   const ultimasFalas = [];       // para a IA não se repetir
@@ -109,7 +115,7 @@ module.exports = function criarTio({ enviar, log }) {
       if (!nomes.length) continue;
       const modelos = FRASES[tipo];
       const texto = modelos[Math.floor(Math.random() * modelos.length)].replace('{n}', lista(nomes));
-      falar(texto, { tipo: 'agradecimento' });
+      falar(texto, { modo: 'agradecimento' });
       return; // um agradecimento por vez
     }
   }
@@ -163,13 +169,13 @@ module.exports = function criarTio({ enviar, log }) {
         ? await cliente.beta.messages.create({ ...pedido, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' })
         : await cliente.messages.create(pedido);
       gasto.usd += custoDe(resposta.usage || {});
-      if (resposta.stop_reason === 'refusal') { await falar(desconversa(nome), { tipo: 'resposta', para: { nome, texto: c.texto } }); return; }
+      if (resposta.stop_reason === 'refusal') { await falar(desconversa(nome), { modo: 'resposta', para: { nome, texto: c.texto } }); return; }
       let texto = resposta.content.filter(b => b.type === 'text').map(b => b.text).join(' ');
       texto = limpaTexto(texto).replace(/^["“”']|["“”']$/g, '');
       if (!texto || texto.length > 220 || BLOQUEIO.test(normaliza(texto))) return;
       if (PARECE_RECUSA.test(normaliza(texto))) texto = desconversa(nome);
       ultimasFalas.push(texto); if (ultimasFalas.length > 5) ultimasFalas.shift();
-      await falar(texto, { tipo: 'resposta', para: { nome, texto: c.texto } });
+      await falar(texto, { modo: 'resposta', para: { nome, texto: c.texto } });
     } catch (e) {
       if (e instanceof Anthropic.AuthenticationError) log('tio juca: chave da API do Claude inválida');
       else if (e instanceof Anthropic.RateLimitError) log('tio juca: limite de uso da API, tentando depois');
@@ -180,24 +186,63 @@ module.exports = function criarTio({ enviar, log }) {
     }
   }
 
-  // ---------- voz (ElevenLabs, opcional) ----------
+  // ---------- voz: ElevenLabs (paga) ou Microsoft Edge (grátis) ----------
+  function guardarAudio(buf) {
+    fs.mkdirSync(PASTA_FALAS, { recursive: true });
+    const nome = `fala-${Date.now()}.mp3`;
+    fs.writeFileSync(path.join(PASTA_FALAS, nome), buf);
+    const antigos = fs.readdirSync(PASTA_FALAS).filter(f => f.endsWith('.mp3')).sort();
+    for (const f of antigos.slice(0, -30)) fs.rmSync(path.join(PASTA_FALAS, f), { force: true });
+    return `/laje/falas/${nome}`;
+  }
+
+  async function vozElevenLabs(falado) {
+    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOZ_ID}?output_format=mp3_44100_64`, {
+      method: 'POST',
+      headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: falado, model_id: 'eleven_flash_v2_5' }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!r.ok) { log(`tio juca: voz falhou (${r.status})`); return null; }
+    return Buffer.from(await r.arrayBuffer());
+  }
+
+  let edge = null, falhasEdge = 0, pausaEdgeAte = 0;
+  function vozGratis(falado) {
+    if (Date.now() < pausaEdgeAte) return Promise.resolve(null);
+    const { MsEdgeTTS, OUTPUT_FORMAT } = require('msedge-tts');
+    const xml = t => t.replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
+    return new Promise(async resolve => {
+      const fim = buf => { clearTimeout(tempo); resolve(buf); };
+      const tempo = setTimeout(() => { try { edge && edge.close(); } catch { /* ok */ } edge = null; fim(null); }, 25000);
+      try {
+        if (!edge) {
+          let agent;
+          if (process.env.HTTPS_PROXY) { try { agent = new (require('https-proxy-agent').HttpsProxyAgent)(process.env.HTTPS_PROXY); } catch { /* sem proxy */ } }
+          edge = new MsEdgeTTS(agent ? { agent } : undefined);
+          await edge.setMetadata(VOZ_GRATIS, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+        }
+        const { audioStream } = edge.toStream(xml(falado), { rate: VOZ_RITMO, pitch: VOZ_TOM });
+        const partes = [];
+        audioStream.on('data', d => partes.push(d));
+        audioStream.on('close', () => { const b = Buffer.concat(partes); falhasEdge = 0; fim(b.length > 1000 ? b : null); });
+        audioStream.on('error', e => { log('tio juca: voz grátis falhou', e && e.message); try { edge.close(); } catch { /* ok */ } edge = null; fim(null); });
+      } catch (e) {
+        log('tio juca: voz grátis falhou', e && e.message);
+        try { edge && edge.close(); } catch { /* ok */ }
+        edge = null;
+        if (++falhasEdge >= 3) { pausaEdgeAte = Date.now() + 5 * 60000; falhasEdge = 0; log('tio juca: voz grátis em pausa por 5 min (só texto)'); }
+        fim(null);
+      }
+    });
+  }
+
   async function gerarVoz(texto) {
-    if (!temVoz) return null;
+    if (!temVoz && !temVozGratis) return null;
     try {
       const falado = texto.replace(PALAVROES, 'piiii');
-      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOZ_ID}?output_format=mp3_44100_64`, {
-        method: 'POST',
-        headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: falado, model_id: 'eleven_flash_v2_5' }),
-        signal: AbortSignal.timeout(20000),
-      });
-      if (!r.ok) { log(`tio juca: voz falhou (${r.status})`); return null; }
-      fs.mkdirSync(PASTA_FALAS, { recursive: true });
-      const nome = `fala-${Date.now()}.mp3`;
-      fs.writeFileSync(path.join(PASTA_FALAS, nome), Buffer.from(await r.arrayBuffer()));
-      const antigos = fs.readdirSync(PASTA_FALAS).filter(f => f.endsWith('.mp3')).sort();
-      for (const f of antigos.slice(0, -30)) fs.rmSync(path.join(PASTA_FALAS, f), { force: true });
-      return `/laje/falas/${nome}`;
+      const buf = temVoz ? await vozElevenLabs(falado) : await vozGratis(falado);
+      return buf ? guardarAudio(buf) : null;
     } catch (e) {
       log('tio juca: erro na voz', e && e.message);
       return null;
@@ -208,7 +253,7 @@ module.exports = function criarTio({ enviar, log }) {
     const mostrado = texto.replace(PALAVROES, p => p[0] + '*'.repeat(p.length - 1));
     const audio = await gerarVoz(texto);
     log(`tio juca diz: ${mostrado}`);
-    enviar({ tipo: 'tio_fala', texto: mostrado, audio, ...extra });
+    enviar({ ...extra, tipo: 'tio_fala', texto: mostrado, audio });
   }
 
   setInterval(responder, A_CADA * 1000).unref();
