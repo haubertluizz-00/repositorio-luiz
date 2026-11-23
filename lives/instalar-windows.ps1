@@ -70,8 +70,9 @@ if (-not (Test-Path $chaves)) {
 # ANTHROPIC_API_KEY=
 # TIO_MODELO=claude-haiku-5-5   (padrao; troque para claude-opus-5-5 se quiser mais esperto e mais caro)
 # TIO_LIMITE_DIA_USD=1
-# Voz: sem ELEVENLABS_API_KEY o tio usa a voz GRATIS da Microsoft (pt-BR-AntonioNeural). Para so texto: TIO_VOZ_GRATIS=nenhuma
+# Voz natural do Tio Juca (ElevenLabs, plano pago). Sem ela a fala aparece so escrita.
 # ELEVENLABS_API_KEY=
+# TIO_VOZ_LIMITE_DIA=8000   (letras faladas por dia; 8000 cabe no plano Creator)
 # EULER_API_KEY=
 "@ | Set-Content -Path $chaves -Encoding ASCII
 }

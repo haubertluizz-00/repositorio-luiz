@@ -5,14 +5,14 @@ window.LAJE = {
   titulo: 'A LAJE DO TIO JUCA',
 
   // Vídeos do tio parado na laje (sem falar ou só resmungando). O tocador sorteia trechos deles.
-  parados: ['parado1.mp4', 'parado2.mp4', 'parado3.mp4'],
+  parados: ['tio-parado.mp4'],   // Higgsfield (Kling 2.5 Pro), ida e volta: 1º quadro = último
 
   // Tio FALANDO (boca abrindo e fechando, sem som). Toca em loop enquanto a voz da IA fala.
   // Truque: tem que COMEÇAR e TERMINAR na mesma pose dos vídeos parados, aí a troca e o loop não aparecem.
-  falando: ['falando1.mp4'],
+  falando: ['tio-falando.mp4'],
 
   // Falas soltas ("comenta aí, caramba!"). Tocam inteiras, de vez em quando, entre os trechos parados.
-  falas: ['fala1.mp4', 'fala2.mp4'],
+  falas: [],   // (fala1/fala2.mp4 são de teste; a fala agora vem da IA + vídeo "falando")
   falaACada: [35, 70],          // segundos entre uma fala e outra (sorteado entre os dois números)
 
   // Presentes: 'min' é o valor mínimo em moedas do TikTok. Nome e ícone são trocados sozinhos

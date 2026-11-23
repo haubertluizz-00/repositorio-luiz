@@ -116,6 +116,14 @@
           await esperarOuPresente(Math.max(1, (v.duration - v.currentTime) - 0.6) * 1000);
           continue;
         }
+        if (C.parados.length === 1) {
+          // um vídeo parado só (ida e volta, 1º quadro = último): toca em loop direto, sem cortes nem zoom,
+          // para emendar perfeito com o vídeo "falando", que começa na mesma pose
+          const ativo = cams[atual].v;
+          if (!(ativo.loop && ativo.src.endsWith('/' + C.parados[0]))) await trocar(C.parados[0], { inicio: 0, cam: 'nenhum', loop: true });
+          await esperarOuPresente(15000);
+          continue;
+        }
         ultimoParado = sortear(C.parados, ultimoParado);
         const seg = rnd(6, 13);
         const v = await trocar(ultimoParado, { inicioFrac: Math.random(), seg });

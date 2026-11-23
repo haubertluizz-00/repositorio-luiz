@@ -113,7 +113,7 @@ Mandar um evento de teste para o jogo:
 
 A ponte (`ponte/tio.js`) lê os comentários e, a cada 25 s, responde um deles no jeito do Tio Juca usando a API do Claude.
 Também agradece presentes, seguidores, compartilhamentos e curtidas em grupo (sem IA, de graça).
-A fala aparece na Laje num balão "🎙️ TIO JUCA — respondendo Fulano"; ele fala em voz alta com a voz GRÁTIS da Microsoft (ou a do ElevenLabs, se tiver chave). Enquanto fala, o tocador mostra o vídeo "falando" (boca mexendo) listado em `jogos/laje/config.js` → `falando`.
+A fala aparece na Laje num balão "🎙️ TIO JUCA — respondendo Fulano"; com chave do ElevenLabs (plano pago) ele fala em voz alta com a voz natural dele. Enquanto fala, o tocador mostra o vídeo "falando" (boca mexendo) listado em `jogos/laje/config.js` → `falando`.
 
 Chaves no arquivo `D:\lives\chaves.env` (o instalador cria; tire o `#` e cole a chave):
 
@@ -123,8 +123,9 @@ Chaves no arquivo `D:\lives\chaves.env` (o instalador cria; tire o `#` e cole a 
 | `TIO_MODELO=claude-opus-5-5` | Troca o modelo. Padrão: `claude-haiku-5-5` (rápido e barato, ~US$ 0,03/hora). Opus 5.5 é mais esperto, ~40x mais caro |
 | `TIO_LIMITE_DIA_USD=1` | Gasto máximo por dia com a IA; passou, o tio só agradece |
 | `TIO_A_CADA=25` | Segundos entre respostas |
-| `ELEVENLABS_API_KEY=...` | Voz paga mais natural (sem ela, usa a voz grátis) |
-| `TIO_VOZ_GRATIS=nenhuma` | Desliga a voz grátis (fala só escrita) |
+| `ELEVENLABS_API_KEY=...` | Voz natural do tio (plano pago do ElevenLabs) |
+| `TIO_VOZ_LIMITE_DIA=8000` | Máximo de letras faladas por dia (frase repetida sai do cache e não conta) |
+| `TIO_VOZ_GRATIS=pt-BR-AntonioNeural` | Voz robótica grátis da Microsoft (desligada por padrão) |
 
 Filtros: comentários e respostas com ofensas, política, conteúdo sexual etc. são ignorados; palavrão na tela aparece censurado (p****) e na voz vira "piiii".
 Se o modelo recusar ou responder com cara de "assistente" ("desculpe, não posso…"), a fala é trocada por uma desconversa do tio ("essa eu passo, aqui só se fala de churrasco e Flamengo!"). Com Opus/Sonnet 5.5 a ponte também liga o *fallback* do servidor (`fallbacks: "default"`).

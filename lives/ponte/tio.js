@@ -7,10 +7,12 @@
 //   TIO_MODELO            modelo do Claude (padrão: claude-haiku-5-5, rápido e barato; o mais esperto é claude-opus-5-5)
 //   TIO_A_CADA            segundos entre uma resposta e outra (padrão 25)
 //   TIO_LIMITE_DIA_USD    gasto máximo por dia com a IA, em dólar (padrão 1.00). Passou disso, para de responder.
-//   ELEVENLABS_API_KEY    chave do ElevenLabs para a voz paga (mais natural). Sem ela usa a voz GRÁTIS da Microsoft.
+//   ELEVENLABS_API_KEY    chave do ElevenLabs = voz NATURAL do Tio Juca (precisa de plano pago). Sem ela, fala só escrita.
 //   TIO_VOZ_ID            voz do ElevenLabs (padrão: a voz "Tio Juca")
-//   TIO_VOZ_GRATIS        voz grátis da Microsoft (padrão pt-BR-AntonioNeural); "nenhuma" deixa a fala só escrita
-//   TIO_VOZ_RITMO / TIO_VOZ_TOM   ajuste da voz grátis (padrão +6% e -8Hz, um pouco mais grave)
+//   TIO_VOZ_LIMITE_DIA    máximo de letras faladas por dia no ElevenLabs (padrão 8000 ≈ 4 mil créditos/dia,
+//                         cabe no plano Creator). Frase repetida sai do cache e não conta. Passou do limite: só texto.
+//   TIO_VOZ_GRATIS        voz robótica grátis da Microsoft (ex.: pt-BR-AntonioNeural). Desligada por padrão.
+//   TIO_VOZ_RITMO / TIO_VOZ_TOM   ajuste da voz grátis (padrão +6% e -8Hz)
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -20,10 +22,12 @@ const MODELO = process.env.TIO_MODELO || 'claude-haiku-5-5';
 const A_CADA = Math.max(8, Number(process.env.TIO_A_CADA || 25));
 const LIMITE_DIA = Number(process.env.TIO_LIMITE_DIA_USD || 1);
 const VOZ_ID = process.env.TIO_VOZ_ID || 'DFSIymlMNpXmTRzLbJ9N';
-const VOZ_GRATIS = process.env.TIO_VOZ_GRATIS || 'pt-BR-AntonioNeural';
+const VOZ_GRATIS = process.env.TIO_VOZ_GRATIS || 'nenhuma';
+const VOZ_LIMITE_DIA = Number(process.env.TIO_VOZ_LIMITE_DIA || 8000);
 const VOZ_RITMO = process.env.TIO_VOZ_RITMO || '+6%';
 const VOZ_TOM = process.env.TIO_VOZ_TOM || '-8Hz';
 const PASTA_FALAS = path.resolve(__dirname, '..', 'jogos', 'laje', 'falas');
+const PASTA_CACHE = path.join(PASTA_FALAS, 'cache');
 
 // preço por 1 milhão de tokens (entrada, saída) para a conta de gasto do dia
 const PRECOS = {
@@ -70,7 +74,7 @@ module.exports = function criarTio({ enviar, log }) {
   const cliente = temIA ? new Anthropic() : null;
   const temVoz = !!process.env.ELEVENLABS_API_KEY;
   const temVozGratis = !temVoz && VOZ_GRATIS.toLowerCase() !== 'nenhuma';
-  log(`tio juca: ${temIA ? `respostas com IA (${MODELO}, a cada ${A_CADA}s, limite US$ ${LIMITE_DIA.toFixed(2)}/dia)` : 'sem ANTHROPIC_API_KEY, só agradecimentos'}; voz: ${temVoz ? 'ElevenLabs' : temVozGratis ? `grátis (${VOZ_GRATIS})` : 'só texto'}`);
+  log(`tio juca: ${temIA ? `respostas com IA (${MODELO}, a cada ${A_CADA}s, limite US$ ${LIMITE_DIA.toFixed(2)}/dia)` : 'sem ANTHROPIC_API_KEY, só agradecimentos'}; voz: ${temVoz ? `ElevenLabs (até ${VOZ_LIMITE_DIA} letras/dia)` : temVozGratis ? `grátis (${VOZ_GRATIS})` : 'só texto'}`);
 
   const comentarios = [];        // { id, nome, texto, em, presenteou }
   const ultimasFalas = [];       // para a IA não se repetir
@@ -104,7 +108,8 @@ module.exports = function criarTio({ enviar, log }) {
     presente: ['Valeu demais, {n}! Assim a laje fica de pé, rapaz!', 'Ih, rapaz! {n} mandou bem! Tá convidado pro churrasco!', 'Obrigado, {n}! Isso é mais bonito que gol do Mengão!'],
     seguir: ['Chegou gente nova na laje: {n}! Pega uma cadeira aí!', 'Seja bem-vindo, {n}! Aqui é família, mermão!'],
     compartilhar: ['{n} espalhou a laje pro mundo! Valeu, parceiro!', 'Isso aí, {n}! Chama a galera que tem carne!'],
-    like: ['Valeu pelas curtidas, {n}!', 'Curtiu, né, {n}? Gostei de ver!'],
+    // curtida é o que mais chega: frases sem nome, a voz é gerada uma vez só e fica no cache
+    like: ['Valeu pelas curtidas, galera!', 'Isso aí, continua curtindo que a carne tá saindo!', 'Olha as curtidas chegando! Mengão!'],
   };
   function agradecimentos() {
     for (const tipo of ['presente', 'seguir', 'compartilhar', 'like']) {
@@ -114,8 +119,9 @@ module.exports = function criarTio({ enviar, log }) {
       mapa.clear();
       if (!nomes.length) continue;
       const modelos = FRASES[tipo];
-      const texto = modelos[Math.floor(Math.random() * modelos.length)].replace('{n}', lista(nomes));
-      falar(texto, { modo: 'agradecimento' });
+      const modelo = modelos[Math.floor(Math.random() * modelos.length)];
+      const texto = modelo.replace('{n}', lista(nomes));
+      falar(texto, { modo: 'agradecimento', repetivel: !modelo.includes('{n}') });
       return; // um agradecimento por vez
     }
   }
@@ -237,19 +243,38 @@ module.exports = function criarTio({ enviar, log }) {
     });
   }
 
+  // frases iguais (agradecimentos, desconversas) são geradas uma vez só e reaproveitadas
+  let letras = { dia: '', n: 0 };
   async function gerarVoz(texto) {
     if (!temVoz && !temVozGratis) return null;
     try {
       const falado = texto.replace(PALAVROES, 'piiii');
+      const chave = require('crypto').createHash('sha1').update(`${temVoz ? VOZ_ID : VOZ_GRATIS}|${falado}`).digest('hex').slice(0, 16);
+      const emCache = path.join(PASTA_CACHE, `${chave}.mp3`);
+      if (fs.existsSync(emCache)) return `/laje/falas/cache/${chave}.mp3`;
+      if (temVoz) {
+        if (letras.dia !== hoje()) letras = { dia: hoje(), n: 0 };
+        if (letras.n + falado.length > VOZ_LIMITE_DIA) return null;
+      }
       const buf = temVoz ? await vozElevenLabs(falado) : await vozGratis(falado);
-      return buf ? guardarAudio(buf) : null;
+      if (!buf) return null;
+      if (temVoz) letras.n += falado.length;
+      // frase sem nome de ninguém (repete muito): guarda no cache
+      if (repetivel.has(texto)) {
+        fs.mkdirSync(PASTA_CACHE, { recursive: true });
+        fs.writeFileSync(emCache, buf);
+        return `/laje/falas/cache/${chave}.mp3`;
+      }
+      return guardarAudio(buf);
     } catch (e) {
       log('tio juca: erro na voz', e && e.message);
       return null;
     }
   }
 
+  const repetivel = new Set();
   async function falar(texto, extra) {
+    if (extra && extra.repetivel) { repetivel.add(texto); delete extra.repetivel; }
     const mostrado = texto.replace(PALAVROES, p => p[0] + '*'.repeat(p.length - 1));
     const audio = await gerarVoz(texto);
     log(`tio juca diz: ${mostrado}`);

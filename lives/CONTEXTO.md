@@ -124,8 +124,11 @@ VPS (24h)
   Versão "quase parada" teve presentes suspensos em minutos; a com movimento/legendas durou 3h (sem garantia). Usar 127.0.0.1 (não localhost) no LIVE Studio. Fundo com coisas caindo denuncia o loop.
 
 ## Tio Juca "igual ao tutorial" (22/11/2026)
-- Voz GRÁTIS ligada por padrão (msedge-tts 2.1.1, pt-BR-AntonioNeural, ritmo +6%, tom -8Hz). ElevenLabs só se tiver chave.
+- Voz grátis (msedge-tts, pt-BR-AntonioNeural) testada: usuário achou ruim ("tem que ser natural") → desligada por padrão (TIO_VOZ_GRATIS).
+  Voz oficial = ElevenLabs "Tio Juca" (plano pago). Controle de gasto: TIO_VOZ_LIMITE_DIA (padrão 8000 letras ≈ 4 mil créditos Flash/dia) + cache de frases sem nome.
 - Tocador: config.js `falando: [...]` = vídeos do tio mexendo a boca, SEM som, que começam e terminam na mesma pose dos "parados".
   Enquanto a voz toca, o tocador põe o "falando" em loop e volta pro parado no fim. Presente tem prioridade.
 - Bug corrigido: as falas do tio iam com `tipo` errado (agradecimento/resposta) e a página ignorava; agora o campo é `modo`.
-- Falta: gerar os vídeos reais "parado" (respira/pisca) e "falando" (boca) a partir de referencia/tio-juca-oficial.jpg com 1º = último quadro.
+- Vídeos reais feitos (23/11): clipes/tio-parado.mp4 e tio-falando.mp4 — Kling 2.5 Turbo Pro i2v 5s da foto oficial (US$ 0,26 cada),
+  convertidos em ida e volta (10s, 720x1280) para 1º quadro = último. Com 1 parado só, o tocador toca em loop direto, sem zoom.
+  Presentes (galinha etc.) e fala1/fala2 ainda são vídeos de teste.
