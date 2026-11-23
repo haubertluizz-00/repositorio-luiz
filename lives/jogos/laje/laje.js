@@ -213,6 +213,7 @@
       const t = patroes.top[ev.id] || (patroes.top[ev.id] = { nome: ev.nome, moedas: 0 });
       t.nome = ev.nome; t.moedas += moedas; sujo = true; mostrarPatroes();
       const faixa = faixaDe(ev.diamantes || 1);
+      if (!faixa.arquivo) return;   // presente sem vídeo: só entra no ranking; quem agradece é o Tio Juca (pela ponte)
       // junta presentes repetidos da mesma pessoa que ainda estão na fila (vira "x3")
       const igual = fila.find(p => p.id === ev.id && p.faixa === faixa);
       if (igual) igual.qtd += ev.qtd || 1;
