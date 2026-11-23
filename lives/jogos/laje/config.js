@@ -11,6 +11,9 @@ window.LAJE = {
   // Truque: tem que COMEÇAR e TERMINAR na mesma pose dos vídeos parados, aí a troca e o loop não aparecem.
   falando: ['tio-falando.mp4'],
 
+  // true = mostra também o texto do que o tio fala (legenda). false = ele só FALA (o texto aparece só se a voz faltar).
+  legenda: false,
+
   // Falas soltas ("comenta aí, caramba!"). Tocam inteiras, de vez em quando, entre os trechos parados.
   falas: [],   // (fala1/fala2.mp4 são de teste; a fala agora vem da IA + vídeo "falando")
   falaACada: [35, 70],          // segundos entre uma fala e outra (sorteado entre os dois números)
