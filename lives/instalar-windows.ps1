@@ -70,9 +70,12 @@ if (-not (Test-Path $chaves)) {
 # ANTHROPIC_API_KEY=
 # TIO_MODELO=claude-haiku-5-5   (padrao; troque para claude-opus-5-5 se quiser mais esperto e mais caro)
 # TIO_LIMITE_DIA_USD=1
-# Voz natural do Tio Juca (ElevenLabs, plano pago). Sem ela a fala aparece so escrita.
+# Voz natural GRATIS (Google Cloud Text-to-Speech, ate 1 milhao de letras por mes):
+# GOOGLE_TTS_API_KEY=
+# TIO_VOZ_GOOGLE=pt-BR-Chirp3-HD-Charon
+# Voz paga (ElevenLabs). Se tiver as duas, usa esta:
 # ELEVENLABS_API_KEY=
-# TIO_VOZ_LIMITE_DIA=8000   (letras faladas por dia; 8000 cabe no plano Creator)
+# TIO_VOZ_LIMITE_DIA=30000   (letras faladas por dia; Google 30000, ElevenLabs Creator 8000)
 # EULER_API_KEY=
 "@ | Set-Content -Path $chaves -Encoding ASCII
 }

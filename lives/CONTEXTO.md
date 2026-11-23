@@ -135,3 +135,7 @@ VPS (24h)
 - 23/11: usuário pediu para NÃO fazer vídeos/animações/faixa de presente: o foco é o tio entrar na resenha. Presente sem vídeo só entra no ranking
   + Tio Juca agradece pela voz em ~3s. Tabela de presentes escondida (volta sozinha quando algum presente tiver `arquivo`).
   Balões de comentário/presente movidos para baixo do rosto do tio.
+- 23/11: usuário quer o tio FALANDO (sem texto) e com voz GRÁTIS natural (ElevenLabs caro; Edge Antonio "uma bosta").
+  Caminho escolhido: Google Cloud TTS Chirp 3 HD (1 milhão de letras/mês grátis; precisa conta Google Cloud com cartão + chave de API).
+  tio.js: GOOGLE_TTS_API_KEY, TIO_VOZ_GOOGLE (padrão pt-BR-Chirp3-HD-Charon), limite padrão 30000 letras/dia. Não testado (sem chave).
+  config.js `legenda: false`: com voz, o balão escrito não aparece.

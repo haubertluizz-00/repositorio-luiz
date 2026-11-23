@@ -11,6 +11,8 @@
 //   TIO_VOZ_ID            voz do ElevenLabs (padrão: a voz "Tio Juca")
 //   TIO_VOZ_LIMITE_DIA    máximo de letras faladas por dia no ElevenLabs (padrão 8000 ≈ 4 mil créditos/dia,
 //                         cabe no plano Creator). Frase repetida sai do cache e não conta. Passou do limite: só texto.
+//   GOOGLE_TTS_API_KEY    chave do Google Cloud Text-to-Speech = voz natural GRÁTIS até 1 milhão de letras/mês (Chirp 3 HD)
+//   TIO_VOZ_GOOGLE        voz do Google (padrão pt-BR-Chirp3-HD-Charon, masculina)
 //   TIO_VOZ_GRATIS        voz robótica grátis da Microsoft (ex.: pt-BR-AntonioNeural). Desligada por padrão.
 //   TIO_VOZ_RITMO / TIO_VOZ_TOM   ajuste da voz grátis (padrão +6% e -8Hz)
 'use strict';
@@ -23,7 +25,9 @@ const A_CADA = Math.max(8, Number(process.env.TIO_A_CADA || 25));
 const LIMITE_DIA = Number(process.env.TIO_LIMITE_DIA_USD || 1);
 const VOZ_ID = process.env.TIO_VOZ_ID || 'DFSIymlMNpXmTRzLbJ9N';
 const VOZ_GRATIS = process.env.TIO_VOZ_GRATIS || 'nenhuma';
-const VOZ_LIMITE_DIA = Number(process.env.TIO_VOZ_LIMITE_DIA || 8000);
+const VOZ_GOOGLE = process.env.TIO_VOZ_GOOGLE || 'pt-BR-Chirp3-HD-Charon';
+// ElevenLabs: 8000 letras/dia cabe no Creator. Google: 30000/dia fica dentro do 1 milhão grátis do mês.
+const VOZ_LIMITE_DIA = Number(process.env.TIO_VOZ_LIMITE_DIA || (process.env.ELEVENLABS_API_KEY ? 8000 : 30000));
 const VOZ_RITMO = process.env.TIO_VOZ_RITMO || '+6%';
 const VOZ_TOM = process.env.TIO_VOZ_TOM || '-8Hz';
 const PASTA_FALAS = path.resolve(__dirname, '..', 'jogos', 'laje', 'falas');
@@ -72,9 +76,11 @@ const limpaTexto = s => String(s || '').replace(/\s+/g, ' ').trim();
 module.exports = function criarTio({ enviar, log }) {
   const temIA = !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
   const cliente = temIA ? new Anthropic() : null;
-  const temVoz = !!process.env.ELEVENLABS_API_KEY;
+  const temEleven = !!process.env.ELEVENLABS_API_KEY;
+  const temGoogle = !temEleven && !!process.env.GOOGLE_TTS_API_KEY;
+  const temVoz = temEleven || temGoogle;            // vozes naturais, com limite de letras por dia
   const temVozGratis = !temVoz && VOZ_GRATIS.toLowerCase() !== 'nenhuma';
-  log(`tio juca: ${temIA ? `respostas com IA (${MODELO}, a cada ${A_CADA}s, limite US$ ${LIMITE_DIA.toFixed(2)}/dia)` : 'sem ANTHROPIC_API_KEY, só agradecimentos'}; voz: ${temVoz ? `ElevenLabs (até ${VOZ_LIMITE_DIA} letras/dia)` : temVozGratis ? `grátis (${VOZ_GRATIS})` : 'só texto'}`);
+  log(`tio juca: ${temIA ? `respostas com IA (${MODELO}, a cada ${A_CADA}s, limite US$ ${LIMITE_DIA.toFixed(2)}/dia)` : 'sem ANTHROPIC_API_KEY, só agradecimentos'}; voz: ${temVoz ? `${temEleven ? 'ElevenLabs' : `Google (${VOZ_GOOGLE})`} (até ${VOZ_LIMITE_DIA} letras/dia)` : temVozGratis ? `grátis (${VOZ_GRATIS})` : 'só texto'}`);
 
   const comentarios = [];        // { id, nome, texto, em, presenteou }
   const ultimasFalas = [];       // para a IA não se repetir
@@ -218,6 +224,22 @@ module.exports = function criarTio({ enviar, log }) {
     return Buffer.from(await r.arrayBuffer());
   }
 
+  async function vozGoogle(falado) {
+    const r = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(process.env.GOOGLE_TTS_API_KEY)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: { text: falado },
+        voice: { languageCode: VOZ_GOOGLE.slice(0, 5), name: VOZ_GOOGLE },
+        audioConfig: { audioEncoding: 'MP3', speakingRate: 1.05 },
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!r.ok) { log(`tio juca: voz do Google falhou (${r.status}) ${(await r.text()).slice(0, 160)}`); return null; }
+    const j = await r.json();
+    return j.audioContent ? Buffer.from(j.audioContent, 'base64') : null;
+  }
+
   let edge = null, falhasEdge = 0, pausaEdgeAte = 0;
   function vozGratis(falado) {
     if (Date.now() < pausaEdgeAte) return Promise.resolve(null);
@@ -254,14 +276,14 @@ module.exports = function criarTio({ enviar, log }) {
     if (!temVoz && !temVozGratis) return null;
     try {
       const falado = texto.replace(PALAVROES, 'piiii');
-      const chave = require('crypto').createHash('sha1').update(`${temVoz ? VOZ_ID : VOZ_GRATIS}|${falado}`).digest('hex').slice(0, 16);
+      const chave = require('crypto').createHash('sha1').update(`${temEleven ? VOZ_ID : temGoogle ? VOZ_GOOGLE : VOZ_GRATIS}|${falado}`).digest('hex').slice(0, 16);
       const emCache = path.join(PASTA_CACHE, `${chave}.mp3`);
       if (fs.existsSync(emCache)) return `/laje/falas/cache/${chave}.mp3`;
       if (temVoz) {
         if (letras.dia !== hoje()) letras = { dia: hoje(), n: 0 };
         if (letras.n + falado.length > VOZ_LIMITE_DIA) return null;
       }
-      const buf = temVoz ? await vozElevenLabs(falado) : await vozGratis(falado);
+      const buf = temEleven ? await vozElevenLabs(falado) : temGoogle ? await vozGoogle(falado) : await vozGratis(falado);
       if (!buf) return null;
       if (temVoz) letras.n += falado.length;
       // frase sem nome de ninguém (repete muito): guarda no cache
