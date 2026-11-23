@@ -132,3 +132,6 @@ VPS (24h)
 - Vídeos reais feitos (23/11): clipes/tio-parado.mp4 e tio-falando.mp4 — Kling 2.5 Turbo Pro i2v 5s da foto oficial (US$ 0,26 cada),
   convertidos em ida e volta (10s, 720x1280) para 1º quadro = último. Com 1 parado só, o tocador toca em loop direto, sem zoom.
   Presentes (galinha etc.) e fala1/fala2 ainda são vídeos de teste.
+- 23/11: usuário pediu para NÃO fazer vídeos/animações de presente por enquanto. Presente = faixa com o nome ("MANDOU ROSA PRO TIO!")
+  + Tio Juca agradece pela voz em ~3s. Tabela de presentes escondida (volta sozinha quando algum presente tiver `arquivo`).
+  Balões de comentário/presente movidos para baixo do rosto do tio.

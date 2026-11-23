@@ -17,12 +17,15 @@ window.LAJE = {
 
   // Presentes: 'min' é o valor mínimo em moedas do TikTok. Nome e ícone são trocados sozinhos
   // pelos presentes reais da sala quando a live está no ar.
+  // Sem vídeo (arquivo: null) o presente só mostra o nome de quem mandou e o Tio Juca agradece (o vídeo dele não é cortado).
+  // A tabela "manda que aparece na laje" só aparece quando algum presente tiver vídeo.
+  // Quando tiver o vídeo de verdade, coloque o nome dele em 'arquivo' (ex.: 'galinha.mp4').
   presentes: [
-    { min: 1,    nome: 'Rosa',      ico: '🌹', evento: 'Galinha na laje',   arquivo: 'galinha.mp4' },
-    { min: 5,    nome: 'Coração',   ico: '💗', evento: 'Balde da vizinha',  arquivo: 'balde.mp4' },
-    { min: 30,   nome: 'Rosquinha', ico: '🍩', evento: 'Piscina na laje',   arquivo: 'piscina.mp4' },
-    { min: 100,  nome: 'Confete',   ico: '🎉', evento: 'Helicóptero da TV', arquivo: 'helicoptero.mp4' },
-    { min: 500,  nome: 'Leão',      ico: '🦁', evento: 'Onça na laje',      arquivo: 'onca.mp4' },
-    { min: 1000, nome: 'Galáxia',   ico: '🌌', evento: 'Disco voador',      arquivo: 'disco.mp4' },
+    { min: 1,    nome: 'Rosa',      ico: '🌹', evento: 'Galinha na laje',   arquivo: null },
+    { min: 5,    nome: 'Coração',   ico: '💗', evento: 'Balde da vizinha',  arquivo: null },
+    { min: 30,   nome: 'Rosquinha', ico: '🍩', evento: 'Piscina na laje',   arquivo: null },
+    { min: 100,  nome: 'Confete',   ico: '🎉', evento: 'Helicóptero da TV', arquivo: null },
+    { min: 500,  nome: 'Leão',      ico: '🦁', evento: 'Onça na laje',      arquivo: null },
+    { min: 1000, nome: 'Galáxia',   ico: '🌌', evento: 'Disco voador',      arquivo: null },
   ],
 };

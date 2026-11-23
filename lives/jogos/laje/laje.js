@@ -101,12 +101,14 @@
     let ultimoParado = null, ultimaFala = null, ultimoFalando = null, proxFala = agoraS() + rnd(...C.falaACada);
     for (;;) {
       try {
-        if (fila.length) { await tocarPresente(fila.shift()); continue; }
+        // presente COM vídeo corta a cena; presente sem vídeo é animado por cima (laço próprio, lá embaixo)
+        const comVideo = fila.findIndex(p => p.faixa.arquivo);
+        if (comVideo >= 0) { await tocarPresente(fila.splice(comVideo, 1)[0]); continue; }
         if (tioFalando && (C.falando || []).length) {
           // vídeo "falando" começa e termina no mesmo quadro do "parado": em loop não aparece emenda
           ultimoFalando = sortear(C.falando, ultimoFalando);
           await trocar(ultimoFalando, { inicio: 0, cam: 'nenhum', loop: true, vol: 0.15 });
-          while (tioFalando && !fila.length) await esperarOuPresente(30000);
+          while (tioFalando && !fila.some(p => p.faixa.arquivo)) await esperarOuPresente(30000);
           continue;
         }
         if (C.falas.length && agoraS() >= proxFala) {
@@ -136,6 +138,30 @@
     }
   }
 
+  // ---------- presente sem vídeo: só o nome na tela (o Tio Juca agradece pela voz) ----------
+  const espera = ms => new Promise(r => setTimeout(r, ms));
+  async function mostrarPresente(p) {
+    mostrarFila();
+    const ev = $('evento');
+    ev.querySelector('.nome').textContent = p.nome + (p.qtd > 1 ? `  x${p.qtd}` : '');
+    ev.querySelector('.linha2').textContent = `🎁 MANDOU ${(p.presente || 'PRESENTE').toUpperCase()} PRO TIO!`;
+    const img = ev.querySelector('img');
+    if (p.foto) { img.src = urlFoto(p.foto); img.style.display = ''; } else img.style.display = 'none';
+    ev.classList.add('ver');
+    await espera(4500);
+    ev.classList.remove('ver');
+    await espera(400);
+  }
+
+  let acordarAnim = null;
+  async function lacoAnimacoes() {
+    for (;;) {
+      const i = fila.findIndex(p => !p.faixa.arquivo);
+      if (i < 0) { await new Promise(r => { acordarAnim = r; }); acordarAnim = null; continue; }
+      try { await mostrarPresente(fila.splice(i, 1)[0]); } catch (e) { console.warn('[laje]', e); }
+    }
+  }
+
   async function tocarPresente(p) {
     mostrarFila();
     const ev = $('evento');
@@ -155,7 +181,7 @@
     const el = $('fila'); el.textContent = '';
     if (!fila.length) return;
     const t = document.createElement('div'); t.textContent = 'PRÓXIMOS NA LAJE:'; el.appendChild(t);
-    for (const p of fila.slice(0, 4)) { const d = document.createElement('div'); d.textContent = `${p.faixa.ico} ${p.nome}`; el.appendChild(d); }
+    for (const p of fila.slice(0, 4)) { const d = document.createElement('div'); d.textContent = `🎁 ${p.nome}`; el.appendChild(d); }
     if (fila.length > 4) { const d = document.createElement('div'); d.textContent = `+${fila.length - 4}`; el.appendChild(d); }
   }
 
@@ -191,10 +217,10 @@
       const igual = fila.find(p => p.id === ev.id && p.faixa === faixa);
       if (igual) igual.qtd += ev.qtd || 1;
       else {
-        fila.push({ id: ev.id, nome: ev.nome, foto: ev.foto, faixa, qtd: ev.qtd || 1 });
+        fila.push({ id: ev.id, nome: ev.nome, foto: ev.foto, faixa, qtd: ev.qtd || 1, presente: String(ev.presente || '').slice(0, 24) });
         if (fila.length > 15) { fila.sort((a, b) => b.faixa.min - a.faixa.min); fila.length = 15; }
       }
-      mostrarFila(); avisar();
+      mostrarFila(); avisar(); if (acordarAnim) acordarAnim();
     }
   }
 
@@ -211,7 +237,7 @@
     setTimeout(() => el.classList.remove('ver'), 5200);
   }, 6500);
 
-  const DICAS = ['💬 Comenta aí que o Tio Juca lê!', '🎁 Manda presente que aparece na laje!', '❤️ Curte aí, rapaz!', '👑 Quem manda mais vira PATRÃO DA LAJE'];
+  const DICAS = ['💬 Comenta aí que o Tio Juca responde!', '🎙️ O Tio Juca agradece todo presente!', '❤️ Curte aí, rapaz!', '👑 Quem manda mais vira PATRÃO DA LAJE'];
   let tAviso = 0;
   function avisoRapido(txt) { $('dica').textContent = txt; tAviso = agoraS() + 3.5; }
   setInterval(() => { if (agoraS() > tAviso) $('dica').textContent = DICAS[Math.floor(agoraS() / 6) % DICAS.length]; }, 1000);
@@ -238,6 +264,11 @@
 
   // ---------- tabela de presentes ----------
   function montarTabela() {
+    // sem nenhum vídeo de presente, não tem o que prometer: some com a tabela e fica só o ranking
+    const temVideo = C.presentes.some(f => f.arquivo);
+    $('presentes').style.display = temVideo ? '' : 'none';
+    $('baixo').style.gridTemplateColumns = temVideo ? '' : '260px';
+    $('baixo').style.justifyContent = temVideo ? '' : 'end';
     const el = $('tabela'); el.textContent = '';
     for (const f of C.presentes) {
       const l = document.createElement('div'); l.className = 'presente';
@@ -315,7 +346,7 @@
       const voz = $('voz');
       voz.src = ev.audio; voz.muted = somBloqueado;
       const temBoca = (C.falando || []).length > 0;
-      if (temBoca && !fila.length) { tioFalando = true; avisar(); await new Promise(r => setTimeout(r, 450)); }
+      if (temBoca && !fila.some(p => p.faixa.arquivo)) { tioFalando = true; avisar(); await new Promise(r => setTimeout(r, 450)); }
       else volumeAte(cams[atual].v, 0.2, 300);
       try {
         await voz.play();
@@ -360,5 +391,6 @@
 
   montarTabela(); mostrarPatroes();
   ciclo();
+  lacoAnimacoes();
   window.laje = { evento, tioFala, fila, estado: () => ({ fila: fila.length, comentarios: comentarios.length, curtidas }) };
 })();

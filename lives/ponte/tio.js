@@ -80,7 +80,7 @@ module.exports = function criarTio({ enviar, log }) {
   const ultimasFalas = [];       // para a IA não se repetir
   const agradecer = { like: new Map(), seguir: new Map(), compartilhar: new Map(), presente: new Map() };
   const doadores = new Set();
-  let ocupado = false;
+  let ocupado = false, agradecerJa = null;
   let gasto = { dia: '', usd: 0 };
 
   const hoje = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Sao_Paulo' }).format(new Date());
@@ -96,7 +96,11 @@ module.exports = function criarTio({ enviar, log }) {
       comentarios.push({ id, nome, texto, em: Date.now(), presenteou: doadores.has(id) });
       if (comentarios.length > 30) comentarios.shift();
     } else if (agradecer[ev.tipo]) {
-      if (ev.tipo === 'presente') doadores.add(id);
+      if (ev.tipo === 'presente') {
+        doadores.add(id);
+        // presente é agradecido rápido (espera 3s para juntar combo / vários de uma vez)
+        if (!agradecerJa) agradecerJa = setTimeout(() => { agradecerJa = null; agradecimentos(); }, 3000);
+      }
       agradecer[ev.tipo].set(id, nome);
     }
   }
@@ -105,7 +109,8 @@ module.exports = function criarTio({ enviar, log }) {
   const nomeSeguro = n => (BLOQUEIO.test(normaliza(n)) ? null : n);
   const lista = nomes => (nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`);
   const FRASES = {
-    presente: ['Valeu demais, {n}! Assim a laje fica de pé, rapaz!', 'Ih, rapaz! {n} mandou bem! Tá convidado pro churrasco!', 'Obrigado, {n}! Isso é mais bonito que gol do Mengão!'],
+    presente: ['Valeu demais, {n}! Assim a laje fica de pé, rapaz!', 'Ih, rapaz! {n} mandou bem! Tá convidado pro churrasco!', 'Obrigado, {n}! Isso é mais bonito que gol do Mengão!',
+      'Olha o {n} aí! Esse é patrão, mermão! Pega uma picanha!', 'Caramba, {n}! A Dona Maria lá de cima ficou com inveja agora!', '{n}, você é brabo! Valeu, valeu mesmo!'],
     seguir: ['Chegou gente nova na laje: {n}! Pega uma cadeira aí!', 'Seja bem-vindo, {n}! Aqui é família, mermão!'],
     compartilhar: ['{n} espalhou a laje pro mundo! Valeu, parceiro!', 'Isso aí, {n}! Chama a galera que tem carne!'],
     // curtida é o que mais chega: frases sem nome, a voz é gerada uma vez só e fica no cache
