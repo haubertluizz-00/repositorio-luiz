@@ -15,6 +15,9 @@
 //   GEMINI_API_KEY        Gemini TTS, GRÁTIS mas com cota pequena (~10 falas/dia POR MODELO; o tio alterna entre
 //                         os modelos de voz). Por isso, por padrão, só fala com voz para quem mandou presente;
 //                         TIO_VOZ_GEMINI_TODOS=1 dá voz para todo mundo. TIO_VOZ_GEMINI = voz (padrão Algenib)
+//                         Com pagamento ativado no AI Studio a cota some e cada fala custa ~US$ 0,002:
+//                         TIO_VOZ_LIMITE_DIA_USD = gasto máximo por dia com a voz (padrão 1.00; passou disso, fala escrita)
+//                         TIO_VOZ_USD_SEGUNDO = preço estimado por segundo de fala (padrão 0.00025)
 //   GOOGLE_TTS_API_KEY    Google Cloud Chirp 3 HD, grátis até 1 milhão de letras/mês (pede cartão; TIO_VOZ_GOOGLE)
 //   TIO_VOZ_GRATIS        voz robótica da Microsoft (ex.: pt-BR-AntonioNeural), desligada por padrão
 //   TIO_VOZ_LIMITE_DIA    letras faladas por dia no ElevenLabs/Google Cloud (padrão 8000 / 30000)
@@ -31,6 +34,8 @@ const LIMITE_DIA = Number(env.TIO_LIMITE_DIA_USD || 1);
 const VOZ_ID = env.TIO_VOZ_ID || 'DFSIymlMNpXmTRzLbJ9N';
 const VOZ_GEMINI = env.TIO_VOZ_GEMINI || 'Algenib';
 const VOZ_GEMINI_TODOS = /^(1|sim|true)$/i.test(env.TIO_VOZ_GEMINI_TODOS || '');
+const VOZ_LIMITE_DIA_USD = Number(env.TIO_VOZ_LIMITE_DIA_USD || 1);
+const VOZ_USD_SEGUNDO = Number(env.TIO_VOZ_USD_SEGUNDO || 0.00025);
 const VOZ_GOOGLE = env.TIO_VOZ_GOOGLE || 'pt-BR-Chirp3-HD-Charon';
 const VOZ_GRATIS = env.TIO_VOZ_GRATIS || 'nenhuma';
 const VOZ_LIMITE_DIA = Number(env.TIO_VOZ_LIMITE_DIA || (env.ELEVENLABS_API_KEY ? 8000 : 30000));
@@ -358,7 +363,9 @@ module.exports = function criarTio({ enviar, log }) {
       const parte = (((await r.json()).candidates || [])[0]?.content?.parts || []).find(p => p.inlineData && p.inlineData.data);
       if (!parte) continue;
       const taxa = Number((String(parte.inlineData.mimeType || '').match(/rate=(\d+)/) || [])[1] || 24000);
-      return pcmParaWav(Buffer.from(parte.inlineData.data, 'base64'), taxa);
+      const pcm = Buffer.from(parte.inlineData.data, 'base64');
+      uso.usd += (pcm.length / (taxa * 2)) * VOZ_USD_SEGUNDO;   // conta de quanto custaria (no grátis é zero de verdade)
+      return pcmParaWav(pcm, taxa);
     }
     return null;   // todas as cotas acabaram: a fala aparece escrita
   }
@@ -406,7 +413,7 @@ module.exports = function criarTio({ enviar, log }) {
 
   // limites por dia: letras (ElevenLabs/Google Cloud) ou falas (Gemini, que tem cota grátis curta).
   // Na reta final da cota do Gemini, só quem mandou presente ganha voz.
-  let uso = { dia: '', letras: 0, falas: 0 };
+  let uso = { dia: '', letras: 0, falas: 0, usd: 0 };
   const repetivel = new Set();
   async function gerarVoz(texto, prioridade) {
     if (!voz) return null;
@@ -417,7 +424,8 @@ module.exports = function criarTio({ enviar, log }) {
       const ext = voz === 'gemini' ? 'wav' : 'mp3';
       const emCache = path.join(PASTA_CACHE, `${chave}.${ext}`);
       if (fs.existsSync(emCache)) return `/laje/falas/cache/${chave}.${ext}`;
-      if (uso.dia !== hoje()) uso = { dia: hoje(), letras: 0, falas: 0 };
+      if (uso.dia !== hoje()) uso = { dia: hoje(), letras: 0, falas: 0, usd: 0 };
+      if (voz === 'gemini' && uso.usd >= VOZ_LIMITE_DIA_USD) return null;   // limite de gasto do dia
       if ((voz === 'elevenlabs' || voz === 'google') && uso.letras + falado.length > VOZ_LIMITE_DIA) return null;
       if (voz === 'gemini' && prioridade !== 'alta' && !VOZ_GEMINI_TODOS) return null;   // cota curta: voz só p/ quem mandou presente
       const buf = voz === 'elevenlabs' ? await vozElevenLabs(falado) : voz === 'gemini' ? await vozGemini(falado)
@@ -446,7 +454,7 @@ module.exports = function criarTio({ enviar, log }) {
   }
 
   const nomeCerebro = cerebro === 'claude' ? `Claude ${MODELO} (limite US$ ${LIMITE_DIA.toFixed(2)}/dia)` : cerebro === 'gemini' ? 'Gemini grátis' : 'nenhum (só agradecimentos prontos)';
-  const nomeVoz = { elevenlabs: 'ElevenLabs', gemini: `Gemini grátis (${VOZ_GEMINI}, ${VOZ_GEMINI_TODOS ? 'para todos' : 'só para quem manda presente'})`, google: `Google Cloud (${VOZ_GOOGLE})`, edge: `Microsoft (${VOZ_GRATIS})` }[voz] || 'nenhuma (fala escrita)';
+  const nomeVoz = { elevenlabs: 'ElevenLabs', gemini: `Gemini (${VOZ_GEMINI}, ${VOZ_GEMINI_TODOS ? 'para todos' : 'só para quem manda presente'}, até US$ ${VOZ_LIMITE_DIA_USD.toFixed(2)}/dia)`, google: `Google Cloud (${VOZ_GOOGLE})`, edge: `Microsoft (${VOZ_GRATIS})` }[voz] || 'nenhuma (fala escrita)';
   log(`tio juca: cérebro ${nomeCerebro}, responde a cada ${A_CADA}s; voz ${nomeVoz}`);
   if (cerebro === 'gemini' || voz === 'gemini') modelosGemini();
 

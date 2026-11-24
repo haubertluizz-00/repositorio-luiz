@@ -150,3 +150,5 @@ VPS (24h)
   Descobertas: instrução de sotaque escrita por extenso é LIDA em voz alta → usar etiqueta "[excited, laughing, strong Rio de Janeiro accent]";
   systemInstruction não é aceito pelo modelo de voz; cota grátis de voz ≈ 10 pedidos/dia POR MODELO (429 GenerateRequestsPerDayPerProjectPerModel-FreeTier).
   Solução: alterna entre os modelos (4 de voz, 12 de texto); voz por padrão só para quem manda presente (TIO_VOZ_GEMINI_TODOS=1 libera).
+- 24/11: usuário: "40 falas não aguenta". Proposta: ativar pagamento no AI Studio (mesma chave/voz, ~US$ 0,002 por fala estimado)
+  + TIO_VOZ_GEMINI_TODOS=1 + teto TIO_VOZ_LIMITE_DIA_USD (padrão 1). Preço por segundo é estimativa (TIO_VOZ_USD_SEGUNDO=0.00025).
