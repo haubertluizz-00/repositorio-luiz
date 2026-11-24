@@ -12,8 +12,9 @@
 //
 // Voz (a primeira que tiver chave; sem nenhuma, a fala aparece escrita):
 //   ELEVENLABS_API_KEY    ElevenLabs, pago (voz "Tio Juca", TIO_VOZ_ID)
-//   GEMINI_API_KEY        Gemini TTS, GRÁTIS com limite diário (TIO_VOZ_GEMINI = voz, padrão Algenib;
-//                         TIO_VOZ_GEMINI_DIA = falas por dia, padrão 90; TIO_VOZ_GEMINI_MODELO)
+//   GEMINI_API_KEY        Gemini TTS, GRÁTIS mas com cota pequena (~10 falas/dia POR MODELO; o tio alterna entre
+//                         os modelos de voz). Por isso, por padrão, só fala com voz para quem mandou presente;
+//                         TIO_VOZ_GEMINI_TODOS=1 dá voz para todo mundo. TIO_VOZ_GEMINI = voz (padrão Algenib)
 //   GOOGLE_TTS_API_KEY    Google Cloud Chirp 3 HD, grátis até 1 milhão de letras/mês (pede cartão; TIO_VOZ_GOOGLE)
 //   TIO_VOZ_GRATIS        voz robótica da Microsoft (ex.: pt-BR-AntonioNeural), desligada por padrão
 //   TIO_VOZ_LIMITE_DIA    letras faladas por dia no ElevenLabs/Google Cloud (padrão 8000 / 30000)
@@ -29,7 +30,7 @@ const A_CADA = Math.max(8, Number(env.TIO_A_CADA || 25));
 const LIMITE_DIA = Number(env.TIO_LIMITE_DIA_USD || 1);
 const VOZ_ID = env.TIO_VOZ_ID || 'DFSIymlMNpXmTRzLbJ9N';
 const VOZ_GEMINI = env.TIO_VOZ_GEMINI || 'Algenib';
-const VOZ_GEMINI_DIA = Number(env.TIO_VOZ_GEMINI_DIA || 90);
+const VOZ_GEMINI_TODOS = /^(1|sim|true)$/i.test(env.TIO_VOZ_GEMINI_TODOS || '');
 const VOZ_GOOGLE = env.TIO_VOZ_GOOGLE || 'pt-BR-Chirp3-HD-Charon';
 const VOZ_GRATIS = env.TIO_VOZ_GRATIS || 'nenhuma';
 const VOZ_LIMITE_DIA = Number(env.TIO_VOZ_LIMITE_DIA || (env.ELEVENLABS_API_KEY ? 8000 : 30000));
@@ -61,8 +62,8 @@ Regras da resposta:
 
 Responda SÓ com a fala do Tio Juca.`;
 
-// jeito de falar para a voz do Gemini (ela segue a instrução e lê só a fala)
-const ESTILO_VOZ = 'Leia em português do Brasil, com sotaque carioca bem marcado, como um tiozão de 55 anos animado e brincalhão, voz grave e rouca, falando rápido e rindo um pouco:';
+// jeito de falar para a voz do Gemini: etiqueta entre colchetes (instrução escrita por extenso ela LÊ em voz alta)
+const ESTILO_VOZ = env.TIO_VOZ_ESTILO || '[excited, laughing, strong Rio de Janeiro accent]';
 
 // palavras que fazem o comentário (ou a resposta) ser ignorado
 const BLOQUEIO = /\b(macac\w*|viad\w*|bich(a|inha)s?|traveco\w*|sapat[aã]o|retardad\w*|mongol\w*|preto\s+imundo|nazis\w*|hitler|estupr\w*|pedof\w*|nudes?|pelad[ao]s?|buceta|xoxota|piroca|pau\s+no|bolsonar\w*|lula\b|petista|bolsominion|suic[ií]d\w*|se\s+matar)\b/i;
@@ -118,21 +119,24 @@ module.exports = function criarTio({ enviar, log }) {
 
   // ---------- modelos do Gemini (acha sozinho os nomes atuais) ----------
   let modelos = null;
+  const esgotado = new Map();   // modelo do Gemini → até quando não usar (cota grátis acabou)
   async function modelosGemini() {
     if (modelos) return modelos;
-    modelos = { texto: env.TIO_GEMINI_MODELO || 'gemini-2.5-flash-lite', voz: env.TIO_VOZ_GEMINI_MODELO || 'gemini-2.5-flash-preview-tts' };
+    modelos = { textos: [env.TIO_GEMINI_MODELO || 'gemini-2.5-flash-lite'], vozes: [env.TIO_VOZ_GEMINI_MODELO || 'gemini-2.5-flash-preview-tts'] };
     try {
-      const r = await fetch(`${GEMINI}/models?pageSize=200&key=${encodeURIComponent(env.GEMINI_API_KEY)}`, { signal: AbortSignal.timeout(15000) });
+      const r = await fetch(`${GEMINI}/models?pageSize=300`, { headers: { 'x-goog-api-key': env.GEMINI_API_KEY }, signal: AbortSignal.timeout(15000) });
       if (!r.ok) { log(`tio juca: não consegui listar os modelos do Gemini (${r.status})`); return modelos; }
       const nomes = ((await r.json()).models || []).map(m => String(m.name || '').replace(/^models\//, ''));
       const versao = n => Number((n.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1] || 0);
       const melhor = l => l.sort((a, b) => versao(b) - versao(a) || a.length - b.length)[0];
       const vozes = nomes.filter(n => /tts/.test(n) && /flash/.test(n));
-      const textos = nomes.filter(n => /flash-lite/.test(n) && !/(tts|image|live|audio|embed|thinking)/.test(n));
-      if (!env.TIO_VOZ_GEMINI_MODELO && vozes.length) modelos.voz = melhor(vozes);
-      if (!env.TIO_GEMINI_MODELO && textos.length) modelos.texto = melhor(textos);
+      // texto: primeiro os "flash-lite" (rápidos), depois os "flash"; cada um com a sua cota grátis
+      const textos = nomes.filter(n => /^gemini-[\d.]+-flash(-lite)?(-preview)?$|^gemini-flash(-lite)?-latest$/.test(n));
+      // todos os modelos de voz "flash", do mais novo pro mais velho (cada um tem a sua cota grátis por dia)
+      if (!env.TIO_VOZ_GEMINI_MODELO && vozes.length) modelos.vozes = vozes.sort((a, b) => versao(b) - versao(a) || a.length - b.length);
+      if (!env.TIO_GEMINI_MODELO && textos.length) modelos.textos = textos.sort((a, b) => /lite/.test(b) - /lite/.test(a) || versao(b) - versao(a) || a.length - b.length);
     } catch (e) { log('tio juca: erro ao listar modelos do Gemini', e && e.message); }
-    log(`tio juca: Gemini → texto ${modelos.texto}, voz ${modelos.voz}`);
+    log(`tio juca: Gemini → texto ${modelos.textos.slice(0, 3).join(' / ')}${modelos.textos.length > 3 ? '…' : ''}, voz ${modelos.vozes.join(' / ')}`);
     return modelos;
   }
 
@@ -160,24 +164,34 @@ module.exports = function criarTio({ enviar, log }) {
       }
     }
     if (cerebro === 'gemini') {
-      const { texto: modelo } = await modelosGemini();
-      try {
-        const r = await fetch(`${GEMINI}/models/${modelo}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SISTEMA }] },
-            contents: [{ role: 'user', parts: [{ text: pedidoTexto }] }],
-            generationConfig: { temperature: 1, maxOutputTokens: 200 },
-          }),
-          signal: AbortSignal.timeout(20000),
-        });
-        if (!r.ok) { log(`tio juca: erro do Gemini ${r.status} ${(await r.text()).slice(0, 160)}`); return null; }
-        const j = await r.json();
-        const c = (j.candidates || [])[0];
-        if (!c || j.promptFeedback?.blockReason || /SAFETY|PROHIBITED|BLOCK/.test(c.finishReason || '')) return { recusou: true };
-        return { texto: (c.content?.parts || []).map(p => p.text || '').join(' ') };
-      } catch (e) { log('tio juca: erro do Gemini', e && e.message); return null; }
+      const { textos } = await modelosGemini();
+      for (const modelo of textos) {
+        if ((esgotado.get(modelo) || 0) > Date.now()) continue;
+        try {
+          const r = await fetch(`${GEMINI}/models/${modelo}:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: SISTEMA }] },
+              contents: [{ role: 'user', parts: [{ text: pedidoTexto }] }],
+              generationConfig: { temperature: 1, maxOutputTokens: 300 },
+            }),
+            signal: AbortSignal.timeout(20000),
+          });
+          if (r.status === 429) {
+            const porDia = /PerDay/i.test(await r.text());
+            esgotado.set(modelo, Date.now() + (porDia ? 3 * 3600000 : 65000));
+            log(`tio juca: ${modelo} ${porDia ? 'acabou a cota do dia' : 'no limite por minuto'}, tentando outro`);
+            continue;
+          }
+          if (!r.ok) { log(`tio juca: erro do Gemini ${modelo} ${r.status} ${(await r.text()).slice(0, 160)}`); esgotado.set(modelo, Date.now() + 10 * 60000); continue; }
+          const j = await r.json();
+          const c = (j.candidates || [])[0];
+          if (!c || j.promptFeedback?.blockReason || /SAFETY|PROHIBITED|BLOCK/.test(c.finishReason || '')) return { recusou: true };
+          return { texto: (c.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join(' ') };
+        } catch (e) { log('tio juca: erro do Gemini', e && e.message); return null; }
+      }
+      return null;
     }
     return null;
   }
@@ -319,25 +333,34 @@ module.exports = function criarTio({ enviar, log }) {
     return Buffer.from(await r.arrayBuffer());
   }
 
-  let pausaGeminiAte = 0;
+  // cada modelo de voz tem cota por minuto e por dia; esgotou um, passa pro próximo (ver "esgotado")
   async function vozGemini(falado) {
-    if (Date.now() < pausaGeminiAte) return null;
-    const { voz: modelo } = await modelosGemini();
-    const r = await fetch(`${GEMINI}/models/${modelo}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `${ESTILO_VOZ} ${falado}` }] }],
-        generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOZ_GEMINI } } } },
-      }),
-      signal: AbortSignal.timeout(40000),
-    });
-    if (r.status === 429) { pausaGeminiAte = Date.now() + 30 * 60000; log('tio juca: acabou a cota grátis de voz do Gemini; só texto por 30 min'); return null; }
-    if (!r.ok) { log(`tio juca: voz do Gemini falhou (${r.status}) ${(await r.text()).slice(0, 160)}`); return null; }
-    const parte = (((await r.json()).candidates || [])[0]?.content?.parts || []).find(p => p.inlineData && p.inlineData.data);
-    if (!parte) return null;
-    const taxa = Number((String(parte.inlineData.mimeType || '').match(/rate=(\d+)/) || [])[1] || 24000);
-    return pcmParaWav(Buffer.from(parte.inlineData.data, 'base64'), taxa);
+    const { vozes } = await modelosGemini();
+    for (const modelo of vozes) {
+      if ((esgotado.get(modelo) || 0) > Date.now()) continue;
+      const r = await fetch(`${GEMINI}/models/${modelo}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${ESTILO_VOZ} ${falado}` }] }],
+          generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOZ_GEMINI } } } },
+        }),
+        signal: AbortSignal.timeout(40000),
+      });
+      if (r.status === 429) {
+        const erro = await r.text();
+        const porDia = /PerDay/i.test(erro);
+        esgotado.set(modelo, Date.now() + (porDia ? 3 * 3600000 : 65000));
+        log(`tio juca: voz ${modelo} ${porDia ? 'acabou a cota do dia' : 'no limite por minuto'}, tentando outra`);
+        continue;
+      }
+      if (!r.ok) { log(`tio juca: voz do Gemini falhou (${modelo} ${r.status}) ${(await r.text()).slice(0, 160)}`); esgotado.set(modelo, Date.now() + 10 * 60000); continue; }
+      const parte = (((await r.json()).candidates || [])[0]?.content?.parts || []).find(p => p.inlineData && p.inlineData.data);
+      if (!parte) continue;
+      const taxa = Number((String(parte.inlineData.mimeType || '').match(/rate=(\d+)/) || [])[1] || 24000);
+      return pcmParaWav(Buffer.from(parte.inlineData.data, 'base64'), taxa);
+    }
+    return null;   // todas as cotas acabaram: a fala aparece escrita
   }
 
   async function vozGoogle(falado) {
@@ -396,10 +419,7 @@ module.exports = function criarTio({ enviar, log }) {
       if (fs.existsSync(emCache)) return `/laje/falas/cache/${chave}.${ext}`;
       if (uso.dia !== hoje()) uso = { dia: hoje(), letras: 0, falas: 0 };
       if ((voz === 'elevenlabs' || voz === 'google') && uso.letras + falado.length > VOZ_LIMITE_DIA) return null;
-      if (voz === 'gemini') {
-        const reserva = prioridade === 'alta' ? 1 : prioridade === 'media' ? 0.75 : 0.5;
-        if (uso.falas >= VOZ_GEMINI_DIA * reserva) return null;
-      }
+      if (voz === 'gemini' && prioridade !== 'alta' && !VOZ_GEMINI_TODOS) return null;   // cota curta: voz só p/ quem mandou presente
       const buf = voz === 'elevenlabs' ? await vozElevenLabs(falado) : voz === 'gemini' ? await vozGemini(falado)
         : voz === 'google' ? await vozGoogle(falado) : await vozEdge(falado);
       if (!buf) return null;
@@ -426,7 +446,7 @@ module.exports = function criarTio({ enviar, log }) {
   }
 
   const nomeCerebro = cerebro === 'claude' ? `Claude ${MODELO} (limite US$ ${LIMITE_DIA.toFixed(2)}/dia)` : cerebro === 'gemini' ? 'Gemini grátis' : 'nenhum (só agradecimentos prontos)';
-  const nomeVoz = { elevenlabs: 'ElevenLabs', gemini: `Gemini grátis (${VOZ_GEMINI}, até ${VOZ_GEMINI_DIA} falas/dia)`, google: `Google Cloud (${VOZ_GOOGLE})`, edge: `Microsoft (${VOZ_GRATIS})` }[voz] || 'nenhuma (fala escrita)';
+  const nomeVoz = { elevenlabs: 'ElevenLabs', gemini: `Gemini grátis (${VOZ_GEMINI}, ${VOZ_GEMINI_TODOS ? 'para todos' : 'só para quem manda presente'})`, google: `Google Cloud (${VOZ_GOOGLE})`, edge: `Microsoft (${VOZ_GRATIS})` }[voz] || 'nenhuma (fala escrita)';
   log(`tio juca: cérebro ${nomeCerebro}, responde a cada ${A_CADA}s; voz ${nomeVoz}`);
   if (cerebro === 'gemini' || voz === 'gemini') modelosGemini();
 

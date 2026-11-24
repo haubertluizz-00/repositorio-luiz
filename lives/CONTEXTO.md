@@ -146,3 +146,7 @@ VPS (24h)
   - Presente: em 3s o tio fala SÓ para quem mandou, pelo nome, com zoeira personalizada (usa o último comentário da pessoa). Vários juntos → agradecimento em grupo.
   - Testado com um Gemini falso local (sem chave real). Falta testar com a chave do usuário.
 - Ideia anotada (24/11): live "Don Mateo" (cigano do tarô IA, ~160 pessoas): presente = leitura falada com o nome, fila ao vivo, metas, rankings. Usuário quer fazer "todos" depois.
+- 24/11 teste REAL com a chave Gemini do usuário: funcionou (texto gemini-3.5-flash-lite, voz gemini-3.8-flash-tts, voz Algenib).
+  Descobertas: instrução de sotaque escrita por extenso é LIDA em voz alta → usar etiqueta "[excited, laughing, strong Rio de Janeiro accent]";
+  systemInstruction não é aceito pelo modelo de voz; cota grátis de voz ≈ 10 pedidos/dia POR MODELO (429 GenerateRequestsPerDayPerProjectPerModel-FreeTier).
+  Solução: alterna entre os modelos (4 de voz, 12 de texto); voz por padrão só para quem manda presente (TIO_VOZ_GEMINI_TODOS=1 libera).

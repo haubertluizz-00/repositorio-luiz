@@ -123,7 +123,8 @@ Chaves no arquivo `D:\lives\chaves.env` (o instalador cria; tire o `#` e cole a 
 | `TIO_MODELO=claude-opus-5-5` | Troca o modelo. Padrão: `claude-haiku-5-5` (rápido e barato, ~US$ 0,03/hora). Opus 5.5 é mais esperto, ~40x mais caro |
 | `TIO_LIMITE_DIA_USD=1` | Gasto máximo por dia com a IA; passou, o tio só agradece |
 | `TIO_A_CADA=25` | Segundos entre respostas |
-| `GEMINI_API_KEY=...` | **Grátis** (aistudio.google.com, sem cartão): o tio pensa E fala com voz natural. Cota diária curta: na reta final só quem manda presente ganha voz |
+| `GEMINI_API_KEY=...` | **Grátis** (aistudio.google.com, sem cartão): o tio pensa E fala com voz natural. A voz grátis tem cota pequena (~10 falas/dia por modelo; o tio alterna entre 4), então por padrão só quem manda presente ganha resposta falada |
+| `TIO_VOZ_GEMINI_TODOS=1` | Voz do Gemini para todo mundo (acaba a cota bem mais rápido) |
 | `TIO_VOZ_GEMINI=Algenib` | Voz do Gemini (outras masculinas: Charon, Fenrir, Orus) |
 | `GOOGLE_TTS_API_KEY=...` | Voz natural GRÁTIS do Google (Chirp 3 HD, até 1 milhão de letras/mês) |
 | `TIO_VOZ_GOOGLE=pt-BR-Chirp3-HD-Charon` | Qual voz do Google usar |
