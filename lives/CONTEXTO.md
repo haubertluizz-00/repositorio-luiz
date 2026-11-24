@@ -139,3 +139,10 @@ VPS (24h)
   Caminho escolhido: Google Cloud TTS Chirp 3 HD (1 milhão de letras/mês grátis; precisa conta Google Cloud com cartão + chave de API).
   tio.js: GOOGLE_TTS_API_KEY, TIO_VOZ_GOOGLE (padrão pt-BR-Chirp3-HD-Charon), limite padrão 30000 letras/dia. Não testado (sem chave).
   config.js `legenda: false`: com voz, o balão escrito não aparece.
+- 24/11: "terminar o Tio Juca". tio.js reescrito:
+  - Cérebro: Claude (ANTHROPIC_API_KEY, Haiku) ou, sem ela, Gemini GRÁTIS (GEMINI_API_KEY do AI Studio, sem cartão).
+  - Voz: ElevenLabs > Gemini TTS (grátis, voz Algenib + instrução de sotaque carioca; ~90 falas/dia, reserva o fim da cota p/ presentes) > Google Cloud > Microsoft.
+  - Modelos do Gemini descobertos sozinhos pela lista da API (flash-lite p/ texto, *tts* p/ voz). Áudio PCM → WAV.
+  - Presente: em 3s o tio fala SÓ para quem mandou, pelo nome, com zoeira personalizada (usa o último comentário da pessoa). Vários juntos → agradecimento em grupo.
+  - Testado com um Gemini falso local (sem chave real). Falta testar com a chave do usuário.
+- Ideia anotada (24/11): live "Don Mateo" (cigano do tarô IA, ~160 pessoas): presente = leitura falada com o nome, fila ao vivo, metas, rankings. Usuário quer fazer "todos" depois.

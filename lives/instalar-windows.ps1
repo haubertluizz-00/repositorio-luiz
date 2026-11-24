@@ -66,18 +66,25 @@ Pop-Location
 $chaves = Join-Path $base 'chaves.env'
 if (-not (Test-Path $chaves)) {
 @"
-# Chaves opcionais da live. Tire o # do comeco da linha e cole a chave depois do =
+# Chaves da live. Tire o # do comeco da linha e cole a chave depois do =
+#
+# GRATIS (recomendado): chave do Google Gemini, pega em aistudio.google.com (botao "Get API key"), sem cartao.
+# Sozinha ela ja faz o Tio Juca pensar E falar com voz natural.
+# GEMINI_API_KEY=
+#
+# Opcional, pago: Claude (respostas mais espertas). Se tiver, o cerebro passa a ser o Claude.
 # ANTHROPIC_API_KEY=
-# TIO_MODELO=claude-haiku-5-5   (padrao; troque para claude-opus-5-5 se quiser mais esperto e mais caro)
 # TIO_LIMITE_DIA_USD=1
-# Voz natural GRATIS (Google Cloud Text-to-Speech, ate 1 milhao de letras por mes):
-# GOOGLE_TTS_API_KEY=
-# TIO_VOZ_GOOGLE=pt-BR-Chirp3-HD-Charon
-# Voz paga (ElevenLabs). Se tiver as duas, usa esta:
+# Opcional, pago: voz do ElevenLabs (se tiver, usa no lugar da voz do Gemini)
 # ELEVENLABS_API_KEY=
-# TIO_VOZ_LIMITE_DIA=30000   (letras faladas por dia; Google 30000, ElevenLabs Creator 8000)
 # EULER_API_KEY=
 "@ | Set-Content -Path $chaves -Encoding ASCII
+} elseif (-not (Select-String -Path $chaves -Pattern 'GEMINI_API_KEY' -Quiet)) {
+@"
+
+# GRATIS: chave do Google Gemini (aistudio.google.com, botao "Get API key"). Faz o Tio Juca pensar e falar.
+# GEMINI_API_KEY=
+"@ | Add-Content -Path $chaves -Encoding ASCII
 }
 
 # 4) Atalhos para ligar a live: INICIAR-LIVE (Arena) e INICIAR-LAJE (A Laje do Tio Juca)

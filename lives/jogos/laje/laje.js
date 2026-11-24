@@ -339,7 +339,9 @@
     falando = true;
     const el = $('fala');
     el.querySelector('.txt').textContent = String(ev.texto).slice(0, 220);
-    el.querySelector('.para').textContent = ev.para && ev.para.nome ? `respondendo ${ev.para.nome}: "${String(ev.para.texto || '').slice(0, 60)}"` : '';
+    el.querySelector('.para').textContent = !(ev.para && ev.para.nome) ? ''
+      : ev.modo === 'presente' ? `falando com ${ev.para.nome} (mandou presente)`
+      : `respondendo ${ev.para.nome}: "${String(ev.para.texto || '').slice(0, 60)}"`;
     // com voz, o tio FALA a resposta: o balão escrito só aparece se C.legenda = true (ou se a voz faltar)
     if (!ev.audio || C.legenda) el.classList.add('ver');
     let dur = Math.max(4000, String(ev.texto).length * 70);
