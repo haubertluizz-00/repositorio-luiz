@@ -1,12 +1,12 @@
 // Arena das Bolinhas (3D) — cada pessoa da live vira uma bolinha com a foto de perfil.
 // Comentar = entrar e dar um empurrão. Like = dash. Presentes = força, onda de choque, gigante, meteoros, terremoto.
 // A arena encolhe; quem cair no abismo sai. A última bolinha em pé vence a rodada.
-import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import * as THREE from '../comum/vendor/three/three.module.js';
+import { EffectComposer } from '../comum/vendor/three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from '../comum/vendor/three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from '../comum/vendor/three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from '../comum/vendor/three/addons/postprocessing/OutputPass.js';
+import { CSS2DRenderer, CSS2DObject } from '../comum/vendor/three/addons/renderers/CSS2DRenderer.js';
 
 // ---------- Ajustes do jogo ----------
 const CFG = {

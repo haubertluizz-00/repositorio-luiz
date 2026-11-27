@@ -88,6 +88,15 @@
   #sim .status { margin-top: 10px; color: #aab; font-size: 12px; }
   @media (max-width: 760px) { #fora { flex-direction: column; } #sim { width: 100%; max-height: 38vh; } }
 </style>
+<script>
+  // se o jogo não conseguir rodar (iPhone antigo, erro), mostra o motivo na tela para dar para arrumar
+  addEventListener('error', e => {
+    const d = document.getElementById('erro-tela') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'erro-tela' }));
+    d.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99;background:#b00;color:#fff;font:14px system-ui;padding:10px;border-radius:8px;white-space:pre-wrap';
+    d.textContent = 'ERRO: ' + (e.message || e.type) + (e.filename ? '\n' + e.filename.split('/').pop() + ':' + e.lineno : '') + '\n' + navigator.userAgent;
+  }, true);
+  setTimeout(() => { if (!window.jogo) dispatchEvent(new ErrorEvent('error', { message: 'o jogo não iniciou (navegador antigo? atualize o iOS)' })); }, 8000);
+</script>
 <script type="importmap">
 { "imports": { "three": "../comum/vendor/three/three.module.js", "three/addons/": "../comum/vendor/three/addons/" } }
 </script>
