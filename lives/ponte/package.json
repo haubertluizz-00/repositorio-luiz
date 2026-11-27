@@ -1,0 +1,16 @@
+{
+  "name": "ponte-live",
+  "version": "1.0.0",
+  "description": "Lê a live do TikTok e manda eventos para o jogo",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.10.0",
+    "msedge-tts": "2.1.1",
+    "tiktok-live-connector": "2.5.0",
+    "ws": "8.22.2"
+  },
+  "private": true
+}
